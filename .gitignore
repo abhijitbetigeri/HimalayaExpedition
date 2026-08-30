@@ -28,3 +28,17 @@ friction_gap.html
 # ---- job scratch -------------------------------------------------------------
 logs/
 *.tmp
+
+# ---- macOS / runtime noise -----------------------------------------------
+.DS_Store
+**/.DS_Store
+stream.log
+
+# ---- video artefacts ------------------------------------------------------
+# Videos live in the HF dataset repo (abhijitbetigeri/himalaya-g1-demo), not here.
+# demo/watch alone is ~244 MB; keeping renders in the code repo makes it painful
+# to clone for no benefit, since every clip is reproducible from these scripts.
+demo/watch/
+demo/watch2/
+demo/BEST/
+*.mp4

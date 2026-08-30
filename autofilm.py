@@ -81,13 +81,34 @@ for pkg in ["isaaclab", "isaaclab_ov", "isaaclab_physx", "isaaclab_ovphysx",
 sh(f"{PY} -m pip install --no-cache-dir rsl-rl-lib imageio imageio-ffmpeg 2>&1 | tail -1",
    600, "deps", tail=1)
 
+# CC0 alpine sky. Lighting matters more than albedo here: a white surface under
+# default lighting looks like plastic, and under a real sky looks like snow.
+HDRI = "/tmp/alpine.hdr"
+sh(f"curl -sL --max-time 240 -o {HDRI} "
+   "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/2k/horn-koppe_snow_2k.hdr "
+   f"&& ls -la {HDRI}", 300, "hdri", tail=2)
+HAVE_HDRI = pathlib.Path(HDRI).exists() and pathlib.Path(HDRI).stat().st_size > 100000
+print(f"alpine HDRI available: {HAVE_HDRI}", flush=True)
+
 G1DIR = pathlib.Path(f"{LAB}/source/isaaclab_tasks/isaaclab_tasks/manager_based/"
                      f"locomotion/velocity/config/g1")
 (G1DIR / "auto_env_cfg.py").write_text(textwrap.dedent('''
     """Snow that looks like snow, against which a white robot is visible."""
     import isaaclab.sim as sim_utils
+    import isaaclab.terrains as terrain_gen
+    from isaaclab.terrains import TerrainGeneratorCfg
     from isaaclab.utils.configclass import configclass
     from .flat_env_cfg import G1FlatEnvCfg
+
+    # terrain_type="plane" spawns Isaac's default ground plane, which carries its
+    # own blue grid material and IGNORES visual_material. That is why every "snow"
+    # clip rendered as a blue grid. A generated flat terrain honours the material.
+    FLAT_SNOW = TerrainGeneratorCfg(
+        size=(12.0, 12.0), border_width=25.0, num_rows=1, num_cols=1,
+        horizontal_scale=0.25, vertical_scale=0.005, slope_threshold=0.75,
+        use_cache=True,
+        sub_terrains={"flat": terrain_gen.MeshPlaneTerrainCfg(proportion=1.0)},
+    )
 
     # Blue-grey rather than white: the G1 is white, so near-white snow left almost
     # no contrast and the robot vanished into the ground.
@@ -100,7 +121,18 @@ G1DIR = pathlib.Path(f"{LAB}/source/isaaclab_tasks/isaaclab_tasks/manager_based/
             super().__post_init__()
             self.scene.num_envs = 1              # one subject, always
             self.scene.env_spacing = 8.0
+            self.scene.terrain.terrain_type = "generator"
+            self.scene.terrain.terrain_generator = FLAT_SNOW
             self.scene.terrain.visual_material = SNOW
+            # Real sky illumination. Guarded because a failed download must not
+            # take the whole shoot down -- default lighting is worse, not fatal.
+            import os as _os
+            if _os.path.exists("/tmp/alpine.hdr"):
+                try:
+                    self.scene.sky_light.spawn.texture_file = "/tmp/alpine.hdr"
+                    self.scene.sky_light.spawn.intensity = 900.0
+                except Exception:
+                    pass
             self.observations.policy.enable_corruption = False
             self.commands.base_velocity.debug_vis = False   # the green blob
             self.events.push_robot = None
@@ -152,6 +184,7 @@ MAIN = textwrap.dedent('''
     from isaaclab.app import AppLauncher
     app = AppLauncher(headless=True, enable_cameras=True, device="cuda:0").app
 
+    import re
     import gymnasium as gym, torch, imageio, numpy as np
     import isaaclab_tasks  # noqa
     from isaaclab_tasks.utils import parse_env_cfg
@@ -167,17 +200,31 @@ MAIN = textwrap.dedent('''
         set of pixels departing from the local median. Coverage says how big it
         reads; the centroid says whether the camera is actually pointing at it.
         """
-        f = np.asarray(frames[len(frames) // 2], dtype=float)
-        g = f.mean(axis=2)
-        mask = np.abs(g - np.median(g)) > 22
-        cov = float(mask.mean())
+        f = np.asarray(frames[len(frames) // 2], dtype=float)[:, :, :3]
+        H, W = f.shape[:2]
+        # Background = the four corners. A camera anchored to the robot never puts
+        # the subject there, so they are a reliable sample of ground and sky.
+        k = max(8, min(H, W) // 10)
+        # BOTTOM corners only: the top ones contain sky and the HDRI's mountain
+        # ridge, and including them made the horizon read as the subject.
+        corners = np.concatenate([f[-k:, :k].reshape(-1, 3), f[-k:, -k:].reshape(-1, 3)])
+        bg = np.median(corners, axis=0)
+        dist = np.linalg.norm(f - bg[None, None, :], axis=2)
+        mask = dist > 45                      # clearly not ground or sky
+        # Only the central band counts: a tracking camera that has lost its subject
+        # is exactly the case a corner-anchored measure must not reward.
+        # Exclude the top 45% outright -- that is sky and horizon, never the robot
+        # when the camera is anchored to it.
+        band = np.zeros_like(mask); band[int(0.45*H):int(0.98*H), int(0.28*W):int(0.72*W)] = True
+        mask = mask & band
+        cov = float(mask.sum() / (band.sum() + 1e-9))
         ys, xs = np.nonzero(mask)
-        if xs.size < 50:
+        if xs.size < 200:
             return dict(cov=cov, cx=0.5, cy=0.5, ok=False, why="subject not found")
-        cx, cy = float(xs.mean() / g.shape[1]), float(ys.mean() / g.shape[0])
-        ok = (0.015 <= cov <= 0.30) and (0.25 <= cx <= 0.75) and (0.25 <= cy <= 0.85)
-        why = ("too small/absent" if cov < 0.015 else
-               "fills the frame" if cov > 0.30 else
+        cx, cy = float(xs.mean() / W), float(ys.mean() / H)
+        ok = (0.05 <= cov <= 0.45) and (0.25 <= cx <= 0.75) and (0.25 <= cy <= 0.85)
+        why = ("too small/absent" if cov < 0.05 else
+               "fills the frame" if cov > 0.45 else
                "off-centre" if not (0.25 <= cx <= 0.75 and 0.25 <= cy <= 0.85) else "ok")
         return dict(cov=round(cov, 4), cx=round(cx, 3), cy=round(cy, 3), ok=ok, why=why)
 
@@ -195,6 +242,12 @@ MAIN = textwrap.dedent('''
         env = gym.make(task, cfg=cfg, render_mode="rgb_array")
         obs_d, _ = env.reset(); obs = obs_d["policy"]
         robot = env.unwrapped.scene["robot"]
+
+        # Finger joints on the G1 are named <side>_<zero..six>_joint.
+        finger_idx = [i for i, n in enumerate(robot.joint_names)
+                      if re.match(r"^(left|right)_(zero|one|two|three|four|five|six)_joint$", n)]
+        print(f"  holding {len(finger_idx)} finger joints at neutral: "
+              f"{[robot.joint_names[i] for i in finger_idx][:4]}...", flush=True)
         frames, events, mode = [], [], "walk"
         with torch.inference_mode():
             for i in range(steps):
@@ -212,6 +265,9 @@ MAIN = textwrap.dedent('''
                     elif mode == "recover" and h > 0.65 and up > 0.85:
                         events.append((i, "WALK ON")); mode = "walk"
                 act = rec(obs) if (rec is not None and mode == "recover") else policy(obs)
+                if finger_idx:
+                    act = act.clone()
+                    act[:, finger_idx] = 0.0     # neutral hands, not flailing ones
                 obs_d, _, term, trunc, _ = env.step(act)
                 obs = obs_d["policy"]
                 if i % 2 == 0:
@@ -224,7 +280,7 @@ MAIN = textwrap.dedent('''
 
     def autoshoot(name, task, policy_path, steps, recover_path=None, tries=4):
         """Shoot, score, adjust the camera, repeat. Keep the best."""
-        eye, lookat = (2.0, 2.0, 1.05), (0.0, 0.0, 0.55)
+        eye, lookat = (1.25, 1.25, 0.85), (0.0, 0.0, 0.55)
         best = None
         for attempt in range(1, tries + 1):
             print(f"[{name}] attempt {attempt}: eye={eye}", flush=True)
@@ -240,22 +296,38 @@ MAIN = textwrap.dedent('''
                 print(f"[{name}]   ACCEPTED", flush=True)
                 break
             # Adjust and retry rather than shipping it.
-            d = (eye[0] ** 2 + eye[1] ** 2) ** 0.5
-            if s["cov"] < 0.015:
-                d *= 0.6                      # far too small: come in
-            elif s["cov"] > 0.30:
-                d *= 1.6                      # too close: pull back
+            # The previous version recomputed eye[2] from a ratio it had already
+            # overwritten, so "fills the frame" never actually moved the camera
+            # back and every retry returned the same verdict. Scale all three axes
+            # by one factor instead.
+            if s["cov"] < 0.05:
+                f = 0.6                       # a speck: come in
+            elif s["cov"] > 0.45:
+                f = 1.8                       # fills the frame: pull back hard
+            else:
+                f = 1.0
+            eye = (eye[0] * f, eye[1] * f, max(0.7, eye[2] * f))
             if s["cy"] > 0.85:
                 lookat = (lookat[0], lookat[1], max(0.2, lookat[2] - 0.2))
             elif s["cy"] < 0.25:
                 lookat = (lookat[0], lookat[1], lookat[2] + 0.2)
-            k = d / (2 ** 0.5)
-            eye = (k, k, max(0.6, eye[2] * (d / max(1e-6, (eye[0]**2+eye[1]**2)**0.5))))
         if best is None:
             return {"error": "no frames at all"}
         frames, s, events, eye = best
         p = OUT / f"auto_{name}.mp4"
         imageio.mimwrite(p, frames, fps=25, quality=9, macro_block_size=1)
+
+        # Contact sheet: 6 frames spread across the clip, tiled. Reviewing a clip
+        # should cost one glance, not a download.
+        try:
+            idx = [int(k * (len(frames) - 1) / 5) for k in range(6)]
+            tiles = [np.asarray(frames[i]) for i in idx]
+            h = min(t.shape[0] for t in tiles)
+            row = np.concatenate([t[:h, :, :3] for t in tiles], axis=1)
+            imageio.imwrite(OUT / f"auto_{name}_contact.png", row.astype(np.uint8))
+            print(f"[{name}] contact sheet written", flush=True)
+        except Exception as _e:
+            print(f"[{name}] contact sheet failed: {_e}", flush=True)
         print(f"[{name}] WROTE {p}  {len(frames)} frames  score={s}", flush=True)
         return {"file": str(p), "score": s, "eye": list(eye),
                 "events": [[int(i), e] for i, e in events]}
@@ -271,7 +343,7 @@ MAIN = textwrap.dedent('''
     import glob as _glob, time as _time, shutil as _shutil
     _dl = _time.time() + 70 * 60
     while not pathlib.Path("/tmp/policy_recover.pt").exists() and _time.time() < _dl:
-        _h = sorted(_glob.glob("/mnt/himalaya-g1/getup-v3/rsl_rl/*/*/exported/policy.pt"))
+        _h = sorted(_glob.glob("/mnt/himalaya-g1/getup-v*/rsl_rl/*/*/exported/policy.pt"))
         if _h:
             _shutil.copy(_h[-1], "/tmp/policy_recover.pt")
             print("recovery policy found:", _h[-1], flush=True)
