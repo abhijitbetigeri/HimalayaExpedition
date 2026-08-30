@@ -191,6 +191,8 @@ MAIN = textwrap.dedent('''
 
     OUT = pathlib.Path("/mnt/himalaya-g1/videos"); OUT.mkdir(parents=True, exist_ok=True)
     DEV = "cuda:0"
+    WARMUP_FRAMES = 90     # ~2 s of rendering; empirically enough for
+                           # RTX to finish streaming the robot meshes
 
 
     def score(frames):
@@ -200,6 +202,10 @@ MAIN = textwrap.dedent('''
         set of pixels departing from the local median. Coverage says how big it
         reads; the centroid says whether the camera is actually pointing at it.
         """
+        first = np.asarray(frames[0], dtype=float)
+        if first.max() < 8:
+            return dict(cov=0.0, cx=0.5, cy=0.5, ok=False,
+                        why="first frame is black - captured during RTX warm-up")
         f = np.asarray(frames[len(frames) // 2], dtype=float)[:, :, :3]
         H, W = f.shape[:2]
         # Background = the four corners. A camera anchored to the robot never puts
@@ -233,6 +239,18 @@ MAIN = textwrap.dedent('''
         policy = torch.jit.load(policy_path).to(DEV).eval()
         rec = torch.jit.load(recover_path).to(DEV).eval() if recover_path else None
         cfg = parse_env_cfg(task, device=DEV, num_envs=1)
+        # Only the ROOT body was rendering: the diagnostic showed physics places
+        # every link correctly (shoulders 0.999, knees 0.350, ankles 0.054) while
+        # the render drew a torso and head. The contact sheet shows detached
+        # fragments at spawn that vanish as the robot walks away -- the signature
+        # of limb meshes stuck at the world origin while the camera follows the
+        # root. That is the Fabric scene delegate not propagating non-root
+        # transforms to the renderer. Fabric is a throughput optimisation for
+        # thousands of envs; for a one-robot film it costs nothing to turn off.
+        try:
+            cfg.sim.use_fabric = False
+        except Exception as _e:
+            print(f"  could not disable fabric: {_e}", flush=True)
         cfg.viewer.origin_type = "asset_root"
         cfg.viewer.asset_name = "robot"
         cfg.viewer.env_index = 0
@@ -248,6 +266,19 @@ MAIN = textwrap.dedent('''
                       if re.match(r"^(left|right)_(zero|one|two|three|four|five|six)_joint$", n)]
         print(f"  holding {len(finger_idx)} finger joints at neutral: "
               f"{[robot.joint_names[i] for i in finger_idx][:4]}...", flush=True)
+        # RTX streams assets asynchronously. The first frames after startup come
+        # back BLACK, then with PARTIALLY LOADED geometry -- which is why the robot
+        # appeared as a torso with no arms or legs. Physics was always correct
+        # (default-pose body positions: shoulders 0.999, knees 0.350, ankles 0.054);
+        # only the render was incomplete. Burn frames until the renderer settles,
+        # then start capturing.
+        with torch.inference_mode():
+            for _ in range(WARMUP_FRAMES):
+                env.step(torch.zeros_like(policy(obs)))
+                env.unwrapped.render()
+        obs_d, _ = env.reset()
+        obs = obs_d["policy"] if isinstance(obs_d, dict) else obs_d
+
         frames, events, mode = [], [], "walk"
         with torch.inference_mode():
             for i in range(steps):
