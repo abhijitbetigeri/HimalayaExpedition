@@ -1,0 +1,433 @@
+<title>Himalaya Hack Recon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+
+<style>
+:root{
+  --ground:#EEF1F5; --surface:#FFFFFF; --sunk:#E4E9EF;
+  --ink:#0F1720; --muted:#56636F; --faint:#7C8894;
+  --accent:#0B6E87; --accent-soft:#D6EAF1;
+  --warn:#A25322; --warn-soft:#F3E3D8;
+  --line:#D4DBE3; --hair:#E6EBF0;
+  --disp:"Archivo",-apple-system,"Helvetica Neue",sans-serif;
+  --body:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0B1015; --surface:#131A21; --sunk:#0F161C;
+    --ink:#E2E9EF; --muted:#8896A3; --faint:#6E7C89;
+    --accent:#55C6E8; --accent-soft:#123039;
+    --warn:#DE9A5F; --warn-soft:#33240F;
+    --line:#222E39; --hair:#1A242D;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0B1015; --surface:#131A21; --sunk:#0F161C;
+  --ink:#E2E9EF; --muted:#8896A3; --faint:#6E7C89;
+  --accent:#55C6E8; --accent-soft:#123039;
+  --warn:#DE9A5F; --warn-soft:#33240F;
+  --line:#222E39; --hair:#1A242D;
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--ground); color:var(--ink);
+  font-family:var(--body); font-size:17px; line-height:1.62;
+  margin:0; padding:0 20px 96px;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:0}
+.col{max-width:64ch}
+
+/* ---- masthead ---- */
+header{padding:56px 0 32px;border-bottom:1px solid var(--line)}
+.eyebrow{
+  font-family:var(--mono); font-size:11px; font-weight:600;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--accent);
+  margin:0 0 18px;
+}
+h1{
+  font-family:var(--disp); font-weight:700; font-size:clamp(34px,6vw,54px);
+  line-height:1.02; letter-spacing:-.025em; margin:0 0 20px;
+  text-wrap:balance;
+}
+.standfirst{font-size:19px;color:var(--muted);margin:0;max-width:56ch}
+.standfirst strong{color:var(--ink);font-weight:600}
+.meta{
+  display:flex;flex-wrap:wrap;gap:8px 22px;margin:26px 0 0;
+  font-family:var(--mono);font-size:11.5px;color:var(--faint);
+  letter-spacing:.03em;
+}
+
+/* ---- sections ---- */
+section{padding:44px 0;border-bottom:1px solid var(--hair)}
+section:last-of-type{border-bottom:none}
+h2{
+  font-family:var(--disp); font-weight:600; font-size:13px;
+  letter-spacing:.15em; text-transform:uppercase; color:var(--accent);
+  margin:0 0 6px;
+}
+h2 + .lede{
+  font-family:var(--disp); font-weight:600; font-size:clamp(23px,3.4vw,30px);
+  line-height:1.2; letter-spacing:-.018em; color:var(--ink);
+  margin:0 0 24px; max-width:24ch; text-wrap:balance;
+}
+h3{
+  font-family:var(--disp); font-weight:600; font-size:17px;
+  letter-spacing:-.005em; margin:32px 0 8px;
+}
+p{margin:0 0 16px}
+a{color:var(--accent);text-underline-offset:2px}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
+code,.num{font-family:var(--mono);font-size:.86em;color:var(--ink)}
+code{background:var(--sunk);padding:.12em .38em;border-radius:3px;border:1px solid var(--hair)}
+.num{font-variant-numeric:tabular-nums}
+
+ul{margin:0 0 16px;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+ul li{position:relative;padding-left:20px}
+ul li::before{
+  content:""; position:absolute; left:2px; top:.68em;
+  width:6px; height:1.5px; background:var(--accent);
+}
+ol{margin:0;padding-left:0;list-style:none;counter-reset:s;display:flex;flex-direction:column;gap:14px}
+ol li{position:relative;padding-left:34px;counter-increment:s}
+ol li::before{
+  content:counter(s); position:absolute; left:0; top:.1em;
+  font-family:var(--mono); font-size:11px; font-weight:600; color:var(--accent);
+  width:20px;height:20px;line-height:20px;text-align:center;
+  border:1px solid var(--line); border-radius:50%;
+}
+
+/* ---- fact cards ---- */
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.fact{background:var(--surface);padding:20px 20px 22px;display:flex;flex-direction:column;gap:7px}
+.fact .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.fact .v{font-family:var(--disp);font-weight:700;font-size:26px;letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums}
+.fact .n{font-size:14.5px;line-height:1.45;color:var(--muted)}
+.fact.hot .v{color:var(--warn)}
+.fact.cool .v{color:var(--accent)}
+
+/* ---- callout ---- */
+.callout{
+  background:var(--surface); border:1px solid var(--line);
+  border-left:3px solid var(--accent);
+  padding:22px 24px; border-radius:0 4px 4px 0; margin:0 0 24px;
+}
+.callout.warn{border-left-color:var(--warn)}
+.callout p:last-child{margin-bottom:0}
+.callout .tag{
+  font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--accent);display:block;margin-bottom:8px;
+}
+.callout.warn .tag{color:var(--warn)}
+
+/* ---- idea matrix ---- */
+.matrix{display:flex;flex-direction:column;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.idea{background:var(--surface);padding:22px 24px;display:grid;grid-template-columns:1fr auto;gap:6px 28px;align-items:start}
+.idea.pick{background:var(--accent-soft)}
+.idea .name{font-family:var(--disp);font-weight:600;font-size:18px;letter-spacing:-.01em;grid-column:1;margin:0}
+.idea .track{font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin:0 0 6px}
+.idea .desc{grid-column:1;font-size:15px;line-height:1.5;color:var(--muted);margin:0;max-width:52ch}
+.idea .desc b{color:var(--ink);font-weight:600}
+.score{grid-column:2;grid-row:1 / span 3;display:flex;flex-direction:column;gap:5px;min-width:158px}
+.score .total{font-family:var(--disp);font-weight:700;font-size:24px;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1;margin-bottom:4px}
+.score .total span{font-family:var(--mono);font-size:11px;font-weight:400;color:var(--faint);letter-spacing:.04em}
+.bar{display:grid;grid-template-columns:26px 1fr 20px;align-items:center;gap:7px}
+.bar .bl{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.bar .bt{height:5px;background:var(--sunk);border-radius:3px;overflow:hidden}
+.bar .bf{height:100%;background:var(--accent);border-radius:3px}
+.bar .bf.low{background:var(--warn)}
+.bar .bv{font-family:var(--mono);font-size:10px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+@media(max-width:640px){
+  .idea{grid-template-columns:1fr}
+  .score{grid-column:1;grid-row:auto;margin-top:14px;min-width:0}
+}
+
+/* ---- layer stack ---- */
+.layers{display:flex;flex-direction:column;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-bottom:24px}
+.layer{background:var(--surface);padding:20px 24px;display:flex;flex-direction:column;gap:5px}
+.layer .lh{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px}
+.layer .ln{font-family:var(--disp);font-weight:600;font-size:16px}
+.layer .lt{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);border:1px solid var(--line);border-radius:2px;padding:2px 6px}
+.layer p{margin:0;font-size:15px;line-height:1.5;color:var(--muted)}
+.layer .fb{font-family:var(--mono);font-size:11.5px;color:var(--accent);margin-top:4px}
+
+/* ---- questions ---- */
+.qs{display:flex;flex-direction:column;gap:14px}
+.q{display:flex;gap:14px;align-items:baseline}
+.q .qm{font-family:var(--mono);font-size:12px;color:var(--accent);flex:0 0 auto}
+.q p{margin:0;font-size:16px}
+
+footer{padding:40px 0 0;border-top:1px solid var(--line);margin-top:12px}
+footer h2{margin-bottom:16px}
+.src{display:flex;flex-direction:column;gap:9px;font-size:14px;line-height:1.45}
+.src a{color:var(--muted);text-decoration:none;border-bottom:1px solid var(--hair)}
+.src a:hover{color:var(--accent);border-bottom-color:var(--accent)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Prep brief · Himalaya Robotics Hack</p>
+  <h1>The shipped G1 policy has never seen ice.</h1>
+  <p class="standfirst">MuJoCo Playground randomizes G1 ground friction over <span class="num">μ ∈ [0.4, 1.0]</span>. Real ice sits between <span class="num">0.05</span> and <span class="num">0.15</span>. <strong>There is no overlap.</strong> That gap is a two-day project, a 30-second demo, and the most defensible answer to "extreme-condition relevance" on the board.</p>
+  <div class="meta">
+    <span>Aug 29–30, 2026 · San Francisco</span>
+    <span>Target: Unitree G1</span>
+    <span>Prepared Aug 28</span>
+  </div>
+</header>
+
+<section>
+  <h2>Ground truth</h2>
+  <p class="lede">Six things I verified that change the plan</p>
+  <div class="facts">
+    <div class="fact cool">
+      <span class="k">Compute</span>
+      <span class="v">Nebius</span>
+      <span class="n">Single H100 at <span class="num">$3.85</span>/GPU-hr, or an L40S at <span class="num">$1.55</span>. Nothing runs on the Mac — it is an SSH terminal and a video player for the weekend.</span>
+    </div>
+    <div class="fact cool">
+      <span class="k">Training cost</span>
+      <span class="v">~15 min</span>
+      <span class="n">G1 locomotion trains end-to-end on one RTX 4090; MJX humanoid PPO is ~6 min on an A100. You get dozens of runs across two days.</span>
+    </div>
+    <div class="fact hot">
+      <span class="k">Friction randomization</span>
+      <span class="v">0.4 – 1.0</span>
+      <span class="n">The full range in <code>g1/randomize.py</code>. Alongside mass ×[0.9,1.1], armature ×[1.0,1.05], qpos0 ±0.05. Nothing else.</span>
+    </div>
+    <div class="fact cool">
+      <span class="k">G1 envs that exist</span>
+      <span class="v">2</span>
+      <span class="n"><code>G1JoystickFlatTerrain</code> and <code>G1JoystickRoughTerrain</code>. That's it.</span>
+    </div>
+    <div class="fact hot">
+      <span class="k">G1 getup env</span>
+      <span class="v">None</span>
+      <span class="n"><code>Go1Getup</code> and <code>SpotGetup</code> ship; no humanoid equivalent. The recipe is portable — the convergence is not guaranteed.</span>
+    </div>
+    <div class="fact cool">
+      <span class="k">Wind, in one line</span>
+      <span class="v">55.6 m/s</span>
+      <span class="n">200 km/h. MuJoCo subtracts <code>option/@wind</code> from body velocity in its fluid model. Set density and viscosity positive and you have drag.</span>
+    </div>
+  </div>
+</section>
+
+<section class="col">
+  <h2>The reading</h2>
+  <p class="lede">What the three tracks actually cost</p>
+
+  <h3>Track 1 — Movement</h3>
+  <p>This is the track with the shortest path from zero to a working artifact, because Playground's G1 environment already runs. The joystick task is 29-dim position control at 50 Hz, ~103-dim observation (velocity, gyro, gravity, command, joint state, last action, gait phase), 1000-step episodes. Critically, the reward function <em>already has the terms you need</em> — <code>feet_slip</code> at −0.25, <code>orientation</code> at −2.0, <code>feet_air_time</code> at +2.0. Nobody tuned them for ice because nobody trained on ice.</p>
+  <p>So the work is not "build an ice environment from scratch." It is: widen the friction range downward, make friction heterogeneous across the floor, reweight three existing rewards, retrain. That is a tractable Saturday.</p>
+
+  <h3>Track 2 — Action</h3>
+  <p>Five bi-manual setups shared across every team is the binding constraint, not the ML. The LeRobot loop is well-trodden — teleoperate, record ~50 episodes, train ACT, run <code>lerobot-rollout</code> — but the docs say training "should take several hours" and recommend 50 episodes with fixed cameras and consistent grasps. Budget half a day of hardware queue before you have data.</p>
+  <p>The one idea here I'd fight for is <strong>rope-pull detection</strong>: the robot feels tension through joint torques and grips harder. It's genuinely mountaineering-specific (short-roping, belay), and it's a force-sensing problem more than a vision problem, which is unusual on a demo floor full of pick-and-place.</p>
+
+  <h3>Track 3 — Thinking</h3>
+  <p>Cheapest to build, easiest to under-score on technicality. The saving move is to attach it to something physical rather than shipping it standalone. Two numbers worth designing against: Iridium SBD carries <span class="num">340 bytes</span> up, <span class="num">270</span> down, 5–20 s latency, billed per 50-byte block. A telemetry format that fits a full robot health report into one 340-byte burst is a real engineering constraint and reads as such to judges.</p>
+</section>
+
+<section>
+  <h2>Options</h2>
+  <p class="lede">Scored against the published rubric</p>
+  <div class="matrix">
+
+    <div class="idea pick">
+      <p class="track">Track 1 · recommended spine</p>
+      <h3 class="name" style="margin:0">Ice-adaptive gait</h3>
+      <p class="desc">Fork the G1 joystick env: log-uniform friction down to <b>μ = 0.03</b>, per-patch friction so ice appears mid-stride, slip-penalty reweighting. Add a privileged-critic friction head so the actor <b>estimates μ from proprioception</b> and surfaces it as a live traction readout.</p>
+      <div class="score">
+        <div class="total">88<span> / 100</span></div>
+        <div class="bar"><span class="bl">Tec</span><span class="bt"><span class="bf" style="width:85%"></span></span><span class="bv">17</span></div>
+        <div class="bar"><span class="bl">Ext</span><span class="bt"><span class="bf" style="width:100%"></span></span><span class="bv">20</span></div>
+        <div class="bar"><span class="bl">Inn</span><span class="bt"><span class="bf" style="width:80%"></span></span><span class="bv">16</span></div>
+        <div class="bar"><span class="bl">Fea</span><span class="bt"><span class="bf" style="width:85%"></span></span><span class="bv">17</span></div>
+        <div class="bar"><span class="bl">Dem</span><span class="bt"><span class="bf" style="width:90%"></span></span><span class="bv">18</span></div>
+      </div>
+    </div>
+
+    <div class="idea">
+      <p class="track">Track 1 · stretch</p>
+      <h3 class="name" style="margin:0">G1 getup on ice</h3>
+      <p class="desc">Port the <code>Go1Getup</code> recipe to the humanoid — drop from 0.5 m at random orientation, settle 0.5 s, 300-step episodes, reward torso height and upright gravity vector. Explicitly named in the rules. <b>Feasibility is the whole risk</b>: 29-DoF humanoid getup at μ&lt;0.1 may simply not converge in two days.</p>
+      <div class="score">
+        <div class="total">83<span> / 100</span></div>
+        <div class="bar"><span class="bl">Tec</span><span class="bt"><span class="bf" style="width:90%"></span></span><span class="bv">18</span></div>
+        <div class="bar"><span class="bl">Ext</span><span class="bt"><span class="bf" style="width:95%"></span></span><span class="bv">19</span></div>
+        <div class="bar"><span class="bl">Inn</span><span class="bt"><span class="bf" style="width:90%"></span></span><span class="bv">18</span></div>
+        <div class="bar"><span class="bl">Fea</span><span class="bt"><span class="bf low" style="width:45%"></span></span><span class="bv">9</span></div>
+        <div class="bar"><span class="bl">Dem</span><span class="bt"><span class="bf" style="width:95%"></span></span><span class="bv">19</span></div>
+      </div>
+    </div>
+
+    <div class="idea">
+      <p class="track">Track 2</p>
+      <h3 class="name" style="margin:0">Rope-pull detect &amp; grip</h3>
+      <p class="desc">Bimanual policy that senses rope tension through torque residuals and tightens its hold. Strongest mountaineering story on the board. Gated on hardware queue for five shared setups plus multi-hour ACT training.</p>
+      <div class="score">
+        <div class="total">78<span> / 100</span></div>
+        <div class="bar"><span class="bl">Tec</span><span class="bt"><span class="bf" style="width:80%"></span></span><span class="bv">16</span></div>
+        <div class="bar"><span class="bl">Ext</span><span class="bt"><span class="bf" style="width:90%"></span></span><span class="bv">18</span></div>
+        <div class="bar"><span class="bl">Inn</span><span class="bt"><span class="bf" style="width:85%"></span></span><span class="bv">17</span></div>
+        <div class="bar"><span class="bl">Fea</span><span class="bt"><span class="bf low" style="width:50%"></span></span><span class="bv">10</span></div>
+        <div class="bar"><span class="bl">Dem</span><span class="bt"><span class="bf" style="width:85%"></span></span><span class="bv">17</span></div>
+      </div>
+    </div>
+
+    <div class="idea">
+      <p class="track">Track 3</p>
+      <h3 class="name" style="margin:0">Skyline geolocation</h3>
+      <p class="desc">Match a photo's horizon silhouette against ridgelines rendered from a DEM to recover camera pose. Beautiful idea, well-studied (GeoPose3K). No credible open implementation to start from — you'd be writing DEM panorama rendering on day one.</p>
+      <div class="score">
+        <div class="total">73<span> / 100</span></div>
+        <div class="bar"><span class="bl">Tec</span><span class="bt"><span class="bf" style="width:85%"></span></span><span class="bv">17</span></div>
+        <div class="bar"><span class="bl">Ext</span><span class="bt"><span class="bf" style="width:75%"></span></span><span class="bv">15</span></div>
+        <div class="bar"><span class="bl">Inn</span><span class="bt"><span class="bf" style="width:90%"></span></span><span class="bv">18</span></div>
+        <div class="bar"><span class="bl">Fea</span><span class="bt"><span class="bf low" style="width:40%"></span></span><span class="bv">8</span></div>
+        <div class="bar"><span class="bl">Dem</span><span class="bt"><span class="bf" style="width:75%"></span></span><span class="bv">15</span></div>
+      </div>
+    </div>
+
+    <div class="idea">
+      <p class="track">Track 3 · bolt-on</p>
+      <h3 class="name" style="margin:0">Turn-back decision engine</h3>
+      <p class="desc">Wind, temperature, battery draw and gait confidence into a go / hold / descend call. Weak alone on technicality — strong as the head of a stack that already has real state to reason over.</p>
+      <div class="score">
+        <div class="total">72<span> / 100</span></div>
+        <div class="bar"><span class="bl">Tec</span><span class="bt"><span class="bf low" style="width:50%"></span></span><span class="bv">10</span></div>
+        <div class="bar"><span class="bl">Ext</span><span class="bt"><span class="bf" style="width:95%"></span></span><span class="bv">19</span></div>
+        <div class="bar"><span class="bl">Inn</span><span class="bt"><span class="bf" style="width:65%"></span></span><span class="bv">13</span></div>
+        <div class="bar"><span class="bl">Fea</span><span class="bt"><span class="bf" style="width:90%"></span></span><span class="bv">18</span></div>
+        <div class="bar"><span class="bl">Dem</span><span class="bt"><span class="bf low" style="width:60%"></span></span><span class="bv">12</span></div>
+      </div>
+    </div>
+
+    <div class="idea">
+      <p class="track">Track 3 · bolt-on</p>
+      <h3 class="name" style="margin:0">Walk-vs-carried classifier</h3>
+      <p class="desc">Phone IMU, small classifier, near-certain to work. Explicitly suggested in the rules, which means several teams will build exactly this. Use it as a component, never as the submission.</p>
+      <div class="score">
+        <div class="total">58<span> / 100</span></div>
+        <div class="bar"><span class="bl">Tec</span><span class="bt"><span class="bf low" style="width:40%"></span></span><span class="bv">8</span></div>
+        <div class="bar"><span class="bl">Ext</span><span class="bt"><span class="bf low" style="width:60%"></span></span><span class="bv">12</span></div>
+        <div class="bar"><span class="bl">Inn</span><span class="bt"><span class="bf low" style="width:35%"></span></span><span class="bv">7</span></div>
+        <div class="bar"><span class="bl">Fea</span><span class="bt"><span class="bf" style="width:100%"></span></span><span class="bv">20</span></div>
+        <div class="bar"><span class="bl">Dem</span><span class="bt"><span class="bf low" style="width:55%"></span></span><span class="bv">11</span></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="col">
+  <h2>Recommendation</h2>
+  <p class="lede">One sentence a judge repeats to another judge</p>
+  <div class="callout">
+    <span class="tag">The pitch</span>
+    <p style="font-family:var(--disp);font-weight:600;font-size:21px;line-height:1.3;letter-spacing:-.015em">"The robot works out how slippery the ground is, changes how it walks, and tells basecamp — in 340 bytes."</p>
+  </div>
+  <p>Three layers over one shared quantity: the estimated friction under the feet. It touches three of the four things the organizers said they're building for, and each layer stands up on its own if the one below it fails.</p>
+</section>
+
+<section>
+  <div class="layers">
+    <div class="layer">
+      <div class="lh"><span class="ln">Estimate</span><span class="lt">Track 3 · intelligence</span></div>
+      <p>Privileged critic sees true μ; the actor infers it from foot-velocity-during-stance and gyro residuals. Output is a scalar traction estimate at 50 Hz.</p>
+      <p class="fb">Falls back to: a supervised μ-regressor on logged rollouts. Trains in minutes, always demos.</p>
+    </div>
+    <div class="layer">
+      <div class="lh"><span class="ln">Adapt</span><span class="lt">Track 1 · movement</span></div>
+      <p>Policy trained across <span class="num">μ ∈ [0.03, 1.0]</span> log-uniform with heterogeneous patches. Expect it to discover shorter strides, lower CoM, longer double-support — the same things humans do on ice.</p>
+      <p class="fb">Falls back to: the μ estimate gating a hand-tuned conservative gait. Less impressive, still works.</p>
+    </div>
+    <div class="layer">
+      <div class="lh"><span class="ln">Report</span><span class="lt">Track 3 · comms</span></div>
+      <p>Pack traction, gait mode, slip events, battery and a go/hold/descend call into a single 340-byte Iridium SBD burst. Show the byte budget on screen.</p>
+      <p class="fb">Falls back to: nothing. This layer is pure encoding — it cannot fail, and it is cheap.</p>
+    </div>
+  </div>
+  <div class="col">
+    <div class="callout warn">
+      <span class="tag">Demo is 20 points — protect it</span>
+      <p>Record the money shot early and don't depend on live training. The clip is stock policy versus yours, side by side, on <span class="num">μ = 0.08</span>. Stock G1 splits and falls within a couple of steps — you can film that tonight, before you've trained anything, because it needs no policy work at all. Get the "before" in the can first.</p>
+    </div>
+    <p>Then, if and only if the spine converges by Saturday night, spend Sunday morning on the getup port. It's the highest-ceiling addition and the one most likely to eat the whole weekend if you start it first.</p>
+  </div>
+</section>
+
+<section class="col">
+  <h2>Compute</h2>
+  <p class="lede">Nebius, and the one trap in it</p>
+  <div class="callout warn">
+    <span class="tag">Read this before you pip install anything</span>
+    <p>Nebius' GPU image family is <code>ubuntu24.04-cuda13.0</code>. Every MJX and Playground tutorial on the internet tells you to install <code>jax[cuda12]</code>. On this image you want <strong><code>jax[cuda13]</code></strong> — CUDA 13 wheels need driver ≥ 580, which the image has, and mixing the two is the classic way to lose an hour to a silent CPU fallback. Verify with <code>jax.devices()</code> before you trust a single timing number.</p>
+  </div>
+
+  <h3>Which GPU</h3>
+  <p>Take the <strong>H100</strong>, <code>gpu-h100-sxm</code> / <code>1gpu-16vcpu-200gb</code>. At $3.85/GPU-hr a full 30-hour weekend is roughly <span class="num">$115</span>, and G1 locomotion trains in ~15 minutes on that class of card — iteration speed is the entire game here. The L40S at $1.55/hr saves you about $70 and costs you roughly half your training runs. That is a bad trade on a two-day clock.</p>
+
+  <h3>Three scripts, already written</h3>
+  <ul>
+    <li><code>nebius-up.sh</code> — disk, subnet, cloud-init SSH key, instance, public IP. Override <code>PLATFORM</code> and <code>PRESET</code> as env vars to switch cards.</li>
+    <li><code>bootstrap.sh</code> — runs on the VM: uv, <code>jax[cuda13]</code>, mujoco, playground, brax, EGL headless rendering, then a smoke test that loads <code>G1JoystickFlatTerrain</code> and prints its observation and action sizes.</li>
+    <li><code>nebius-down.sh</code> — <code>stop</code> halts GPU billing and keeps the disk; <code>delete</code> removes both, with a confirmation prompt.</li>
+  </ul>
+  <p>The one step I can't do for you is <code>nebius profile create</code> — it opens a browser for federated login and needs your hands on it.</p>
+
+  <h3>Rendering is headless now</h3>
+  <p>No display on the VM, so the MuJoCo viewer is out. Render offscreen with <code>MUJOCO_GL=egl</code>, write mp4s, and <code>scp</code> them down. Worth getting working early — your demo clips are going to come through this path, and discovering it's broken on Sunday afternoon would be its own kind of disaster.</p>
+</section>
+
+<section class="col">
+  <h2>Tonight</h2>
+  <p class="lede">About two hours, all of it remote</p>
+  <ol>
+    <li><strong>Authenticate and bring the box up.</strong> <code>nebius profile create</code>, then <code>./nebius-up.sh</code>, then <code>bootstrap.sh</code> on the VM. It ends by loading the G1 env, so if it completes you know the whole chain works. This is the single highest-value hour of prep.</li>
+    <li><strong>Prove the GPU is real.</strong> <code>jax.devices()</code> must report a GPU, not CPU. Then run one short PPO job on <code>G1JoystickFlatTerrain</code> and note the wall-clock — that number is your budget for every experiment afterwards.</li>
+    <li><strong>Read three files.</strong> <code>g1/joystick.py</code>, <code>g1/randomize.py</code>, <code>go1/getup.py</code>. Roughly 600 lines total, and they contain every lever you'll pull.</li>
+    <li><strong>Get the "before" clip.</strong> Load the stock G1 scene, set floor friction to 0.08, walk it, render to mp4 over EGL, scp it down. Zero training required and it's the first ten seconds of your presentation.</li>
+    <li><strong>Write the 340-byte packet spec.</strong> On paper. It's a design exercise, not code, and it forces you to decide what the robot actually knows.</li>
+  </ol>
+</section>
+
+<section class="col">
+  <h2>At kickoff</h2>
+  <p class="lede">Ask before you commit</p>
+  <div class="qs">
+    <div class="q"><span class="qm">01</span><p>Is there a <strong>pretrained G1 walking policy</strong> provided, or does everyone train from scratch? This changes the baseline you compare against.</p></div>
+    <div class="q"><span class="qm">02</span><p>Is a <strong>Jetson Thor</strong> on site to deploy to? Note the G1 EDU ships Orin at 100 TOPS — Thor is 128 GB and ~2070 FP4 TFLOPS at 130 W, so "runs on Thor" is a different claim from "runs on the robot."</p></div>
+    <div class="q"><span class="qm">03</span><p>Exactly <strong>which bimanual hands</strong>, and how is access queued across teams? Decides whether Track 2 is even reachable.</p></div>
+    <div class="q"><span class="qm">04</span><p>Is the <strong>physical G1 available</strong> for sim-to-real, and can you book floor time? A real robot shuffling on a wet plastic sheet beats any simulator video.</p></div>
+    <div class="q"><span class="qm">05</span><p>What does <strong>"data you collected from your phone"</strong> mean — is there a provided collection app or format?</p></div>
+  </div>
+</section>
+
+<footer>
+  <h2>Sources</h2>
+  <div class="src">
+    <a href="https://docs.nebius.com/compute/quickstart">Nebius Compute — GPU VM quickstart</a>
+    <a href="https://nebius.com/prices">Nebius — GPU pricing</a>
+    <a href="https://docs.jax.dev/en/latest/installation.html">JAX installation — CUDA 13 wheels, driver ≥ 580</a>
+    <a href="https://playground.mujoco.org/">MuJoCo Playground — framework, MJX, sim-to-real</a>
+    <a href="https://github.com/google-deepmind/mujoco_playground">google-deepmind/mujoco_playground — environment registry</a>
+    <a href="https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_g1">mujoco_menagerie — Unitree G1 models (g1_mjx.xml, hands variants)</a>
+    <a href="https://huggingface.co/docs/lerobot/il_robots">LeRobot — imitation learning on real robots</a>
+    <a href="https://mujoco.readthedocs.io/en/stable/computation/fluid.html">MuJoCo docs — fluid forces, wind, density and viscosity</a>
+    <a href="https://www.iridium.com/services/iridium-short-burst-data-sbd">Iridium Short Burst Data — 340 B up / 270 B down</a>
+    <a href="https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-thor/">NVIDIA Jetson AGX Thor — specs</a>
+    <a href="https://www.sciencedirect.com/science/article/pii/S0301679X24006194">Slip-resistance of rubbers on dry and wet ice surfaces</a>
+    <a href="https://arxiv.org/pdf/2512.01996">Learning Sim-to-Real Humanoid Locomotion in 15 Minutes</a>
+    <a href="https://github.com/unitreerobotics/unitree_sdk2_python">unitree_sdk2_python — LocoClient, Damp, Lie2StandUp</a>
+    <a href="https://www.sciencedirect.com/science/article/abs/pii/S0262885617300963">GeoPose3K — mountain camera pose estimation</a>
+  </div>
+</footer>
+
+</div>

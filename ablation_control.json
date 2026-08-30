@@ -1,0 +1,86 @@
+{
+  "episode_steps": 101,
+  "n_rollouts": 2,
+  "seed": 1,
+  "conditions": {
+    "MU=1.00": {
+      "label": "friction sweep, mu=1.00",
+      "mu": 1.0,
+      "compliant": false,
+      "wind": false,
+      "patches": false,
+      "arms": {
+        "base-v2": {
+          "mean": 101.0,
+          "std": 0.0,
+          "median": 101.0,
+          "max": 101,
+          "all": [
+            101,
+            101
+          ],
+          "min_foot_mu": 1.0,
+          "distance_mean": 0.33626244962215424,
+          "distance_std": 0.333919420838356,
+          "distance_all": [
+            0.0023430287837982178,
+            0.6701818704605103
+          ]
+        }
+      }
+    },
+    "MU=0.05": {
+      "label": "friction sweep, mu=0.05",
+      "mu": 0.05,
+      "compliant": false,
+      "wind": false,
+      "patches": false,
+      "arms": {
+        "base-v2": {
+          "mean": 76.0,
+          "std": 6.0,
+          "median": 76.0,
+          "max": 82,
+          "all": [
+            82,
+            70
+          ],
+          "min_foot_mu": 0.05000000074505806,
+          "distance_mean": -0.18238433176884428,
+          "distance_std": 0.5589378279983066,
+          "distance_all": [
+            -0.7413221597671509,
+            0.3765534962294623
+          ]
+        }
+      }
+    },
+    "MU=0.01": {
+      "label": "friction sweep, mu=0.01",
+      "mu": 0.01,
+      "compliant": false,
+      "wind": false,
+      "patches": false,
+      "arms": {
+        "base-v2": {
+          "mean": 85.0,
+          "std": 16.0,
+          "median": 85.0,
+          "max": 101,
+          "all": [
+            101,
+            69
+          ],
+          "min_foot_mu": 0.009999999776482582,
+          "distance_mean": 0.1738691683858633,
+          "distance_std": 0.22568116150796413,
+          "distance_all": [
+            -0.05181199312210083,
+            0.39955032989382744
+          ]
+        }
+      }
+    }
+  },
+  "markdown_table": "| Condition | base-v2 |\n|---|---:|\n| MU=1.00 friction sweep, mu=1.00 | 101 \u00b1 0 (+0.34 m) |\n| MU=0.05 friction sweep, mu=0.05 | 76 \u00b1 6 (-0.18 m) |\n| MU=0.01 friction sweep, mu=0.01 | 85 \u00b1 16 (+0.17 m) |"
+}

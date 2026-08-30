@@ -1,0 +1,34 @@
+{
+  "A benign      (wind off, patches off)": {
+    "survived": 33,
+    "of": 300,
+    "fell_at": 33,
+    "min_foot_mu": 0.6,
+    "pct": 11.0,
+    "secs": 81.7
+  },
+  "B ice only    (wind off, patches ON )": {
+    "survived": 94,
+    "of": 300,
+    "fell_at": 94,
+    "min_foot_mu": 0.4809,
+    "pct": 31.3,
+    "secs": 49.4
+  },
+  "C wind only   (wind ON,  patches off)": {
+    "survived": 86,
+    "of": 300,
+    "fell_at": 86,
+    "min_foot_mu": 0.6,
+    "pct": 28.7,
+    "secs": 45.6
+  },
+  "D full stack  (wind ON,  patches ON )": {
+    "survived": 35,
+    "of": 300,
+    "fell_at": 35,
+    "min_foot_mu": 0.4899,
+    "pct": 11.7,
+    "secs": 22.7
+  }
+}

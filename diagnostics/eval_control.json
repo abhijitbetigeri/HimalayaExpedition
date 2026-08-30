@@ -1,0 +1,42 @@
+{
+  "ice-v2|benign": {
+    "seeds": [
+      33,
+      47,
+      26
+    ],
+    "mean": 35.3,
+    "max": 47,
+    "pct_mean": 11.8
+  },
+  "ice-v2|full": {
+    "seeds": [
+      35,
+      22,
+      34
+    ],
+    "mean": 30.3,
+    "max": 35,
+    "pct_mean": 10.1
+  },
+  "base-v2-baseline|benign": {
+    "seeds": [
+      301,
+      301,
+      196
+    ],
+    "mean": 266,
+    "max": 301,
+    "pct_mean": 88.7
+  },
+  "base-v2-baseline|full": {
+    "seeds": [
+      47,
+      39,
+      148
+    ],
+    "mean": 78,
+    "max": 148,
+    "pct_mean": 26.0
+  }
+}

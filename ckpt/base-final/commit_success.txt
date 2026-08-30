@@ -1,0 +1,1 @@
+Checkpoint commit was successful to /mnt/himalaya-g1/runs/ice-v4-baseline/checkpoints/000052920320

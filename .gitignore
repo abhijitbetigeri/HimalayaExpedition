@@ -1,0 +1,30 @@
+# ---- secrets -- never commit -------------------------------------------------
+# LIVEKIT_API_SECRET is a signing key: anyone holding it can mint tokens for the
+# rooms. .env.example is the template that IS tracked.
+.env
+*.pem
+*.key
+
+# ---- environments ------------------------------------------------------------
+# 2.9 GB, of which 2.0 GB is the vendored mujoco_menagerie. Rebuild with
+#   uv venv --python 3.12 .venv && uv pip install mujoco playground brax
+.venv/
+__pycache__/
+*.pyc
+
+# ---- large generated artefacts -----------------------------------------------
+# videos/ is ~197 MB of rollout renders. The two clips used in the write-up live
+# in demo/ and are tracked; everything else is reproducible from the scripts.
+videos/
+
+# Checkpoints pulled from the HF bucket on demand by local_view.py -- a cache,
+# not source. Refetch with `hf buckets sync`.
+checkpoints/
+
+# 2.6 MB of base64 that duplicates demo/*.mp4 and diffs terribly.
+# Rebuild with `python build_page.py`.
+friction_gap.html
+
+# ---- job scratch -------------------------------------------------------------
+logs/
+*.tmp

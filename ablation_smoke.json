@@ -1,0 +1,208 @@
+{
+  "episode_steps": 101,
+  "n_rollouts": 2,
+  "seed": 1,
+  "conditions": {
+    "C0": {
+      "label": "stock ground, hard, no wind, no patch",
+      "mu": 0.7,
+      "compliant": false,
+      "wind": false,
+      "patches": false,
+      "arms": {
+        "base-v2": {
+          "mean": 101.0,
+          "std": 0.0,
+          "median": 101.0,
+          "max": 101,
+          "all": [
+            101,
+            101
+          ],
+          "min_foot_mu": 0.699999988079071
+        }
+      }
+    },
+    "C1": {
+      "label": "+ ice friction (mu=0.05)",
+      "mu": 0.05,
+      "compliant": false,
+      "wind": false,
+      "patches": false,
+      "arms": {
+        "base-v2": {
+          "mean": 76.0,
+          "std": 6.0,
+          "median": 76.0,
+          "max": 82,
+          "all": [
+            82,
+            70
+          ],
+          "min_foot_mu": 0.05000000074505806
+        }
+      }
+    },
+    "C2": {
+      "label": "+ compliant ground",
+      "mu": 0.05,
+      "compliant": true,
+      "wind": false,
+      "patches": false,
+      "arms": {
+        "base-v2": {
+          "mean": 32.0,
+          "std": 2.0,
+          "median": 32.0,
+          "max": 34,
+          "all": [
+            34,
+            30
+          ],
+          "min_foot_mu": 0.05000000074505806
+        }
+      }
+    },
+    "C3": {
+      "label": "+ wind",
+      "mu": 0.05,
+      "compliant": true,
+      "wind": true,
+      "patches": false,
+      "arms": {
+        "base-v2": {
+          "mean": 35.5,
+          "std": 1.5,
+          "median": 35.5,
+          "max": 37,
+          "all": [
+            37,
+            34
+          ],
+          "min_foot_mu": 0.05000000074505806
+        }
+      }
+    },
+    "C4": {
+      "label": "+ patches (full Himalayan stack)",
+      "mu": null,
+      "compliant": true,
+      "wind": true,
+      "patches": true,
+      "arms": {
+        "base-v2": {
+          "mean": 47.0,
+          "std": 12.0,
+          "median": 47.0,
+          "max": 59,
+          "all": [
+            35,
+            59
+          ],
+          "min_foot_mu": 0.05000084638595581
+        }
+      }
+    },
+    "MU=1.00": {
+      "label": "friction sweep, mu=1.00",
+      "mu": 1.0,
+      "compliant": false,
+      "wind": false,
+      "patches": false,
+      "arms": {
+        "base-v2": {
+          "mean": 101.0,
+          "std": 0.0,
+          "median": 101.0,
+          "max": 101,
+          "all": [
+            101,
+            101
+          ],
+          "min_foot_mu": 1.0
+        }
+      }
+    },
+    "MU=0.40": {
+      "label": "friction sweep, mu=0.40",
+      "mu": 0.4,
+      "compliant": false,
+      "wind": false,
+      "patches": false,
+      "arms": {
+        "base-v2": {
+          "mean": 101.0,
+          "std": 0.0,
+          "median": 101.0,
+          "max": 101,
+          "all": [
+            101,
+            101
+          ],
+          "min_foot_mu": 0.4000000059604645
+        }
+      }
+    },
+    "MU=0.10": {
+      "label": "friction sweep, mu=0.10",
+      "mu": 0.1,
+      "compliant": false,
+      "wind": false,
+      "patches": false,
+      "arms": {
+        "base-v2": {
+          "mean": 85.5,
+          "std": 15.5,
+          "median": 85.5,
+          "max": 101,
+          "all": [
+            70,
+            101
+          ],
+          "min_foot_mu": 0.10000000149011612
+        }
+      }
+    },
+    "MU=0.05": {
+      "label": "friction sweep, mu=0.05",
+      "mu": 0.05,
+      "compliant": false,
+      "wind": false,
+      "patches": false,
+      "arms": {
+        "base-v2": {
+          "mean": 76.0,
+          "std": 6.0,
+          "median": 76.0,
+          "max": 82,
+          "all": [
+            82,
+            70
+          ],
+          "min_foot_mu": 0.05000000074505806
+        }
+      }
+    },
+    "MU=0.01": {
+      "label": "friction sweep, mu=0.01",
+      "mu": 0.01,
+      "compliant": false,
+      "wind": false,
+      "patches": false,
+      "arms": {
+        "base-v2": {
+          "mean": 85.0,
+          "std": 16.0,
+          "median": 85.0,
+          "max": 101,
+          "all": [
+            101,
+            69
+          ],
+          "min_foot_mu": 0.009999999776482582
+        }
+      }
+    }
+  },
+  "markdown_table": "| Condition | base-v2 |\n|---|---:|\n| C0 stock ground, hard, no wind, no patch | 101 \u00b1 0 |\n| C1 + ice friction (mu=0.05) | 76 \u00b1 6 |\n| C2 + compliant ground | 32 \u00b1 2 |\n| C3 + wind | 36 \u00b1 2 |\n| C4 + patches (full Himalayan stack) | 47 \u00b1 12 |\n| MU=1.00 friction sweep, mu=1.00 | 101 \u00b1 0 |\n| MU=0.40 friction sweep, mu=0.40 | 101 \u00b1 0 |\n| MU=0.10 friction sweep, mu=0.10 | 86 \u00b1 16 |\n| MU=0.05 friction sweep, mu=0.05 | 76 \u00b1 6 |\n| MU=0.01 friction sweep, mu=0.01 | 85 \u00b1 16 |"
+}
