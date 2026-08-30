@@ -138,6 +138,28 @@ def robust_write(path: pathlib.Path, text: str, attempts: int = 5) -> bool:
     return False
 
 
+
+CURRICULUM_FLOORS = [0.4, 0.15, 0.05]
+
+
+def latest_checkpoint(root: pathlib.Path):
+    """Newest step directory written by brax under `root`, or None."""
+    if not root.exists():
+        return None
+    steps = [d for d in root.iterdir()
+             if d.is_dir() and d.name.isdigit()
+             and (d / "ppo_network_config.json").exists()]
+    return max(steps, key=lambda d: int(d.name)) if steps else None
+
+
+def patch_checkpoint_load():
+    """Same KERNEL_INITIALIZER[None] bug as stream_sim -- brax cannot read back
+    its own checkpoints, which the curriculum depends on between stages."""
+    from brax.training import networks
+    if None not in networks.KERNEL_INITIALIZER:
+        networks.KERNEL_INITIALIZER[None] = None
+
+
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--run-name", default=None, help="defaults to a timestamp")
@@ -146,6 +168,10 @@ def parse_args():
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--task", default="flat_terrain",
                    choices=["flat_terrain", "rough_terrain"])
+    p.add_argument("--curriculum", action="store_true",
+                   help="anneal the friction floor 0.4 -> 0.15 -> 0.05 across "
+                        "three stages, each restoring the previous. Fixes the "
+                        "ice policy never learning to walk at all.")
     p.add_argument("--ascent", action="store_true",
                    help="train fixed-line ascent on a slope instead of "
                         "locomotion. Different task, much harder.")
@@ -310,19 +336,48 @@ def main():
         ppo.train,
         **{k: v for k, v in ppo_params.items()
            if k not in ("network_factory", "num_timesteps", "num_envs")},
-        num_timesteps=ppo_params.num_timesteps,
         num_envs=ppo_params.num_envs,
         network_factory=network_factory,
-        randomization_fn=randomization_fn,
         wrap_env_fn=wrapper.wrap_for_brax_training,
         progress_fn=progress,
         seed=args.seed,
-        save_checkpoint_path=str(out / "checkpoints"),
     )
+    if not args.curriculum:
+        train_fn = functools.partial(
+            train_fn,
+            num_timesteps=ppo_params.num_timesteps,
+            randomization_fn=randomization_fn,
+            save_checkpoint_path=str(out / "checkpoints"),
+        )
 
-    make_inference_fn, params, _ = train_fn(
-        environment=train_env, eval_env=eval_env)
-    print(f"training done in {(time.time()-t0)/60:.1f} min", flush=True)
+    if args.curriculum:
+        patch_checkpoint_load()
+        import ice_randomize as _ir
+        per_stage = ppo_params.num_timesteps // len(CURRICULUM_FLOORS)
+        restore = None
+        for i, floor in enumerate(CURRICULUM_FLOORS):
+            ck = out / f"stage{i}_mu{floor}" / "checkpoints"
+            print(f"\n=== curriculum stage {i+1}/{len(CURRICULUM_FLOORS)}: "
+                  f"friction floor {floor}, {per_stage:,} steps, "
+                  f"restore={restore} ===", flush=True)
+            stage_fn = functools.partial(
+                train_fn,
+                num_timesteps=per_stage,
+                randomization_fn=_ir.make_domain_randomize(floor),
+                save_checkpoint_path=str(ck),
+                restore_checkpoint_path=(str(restore) if restore else None),
+            )
+            make_inference_fn, params, _ = stage_fn(
+                environment=train_env, eval_env=eval_env)
+            restore = latest_checkpoint(ck)
+            if restore is None:
+                print(f"WARN: stage {i} wrote no checkpoint; later stages will "
+                      f"start from scratch", flush=True)
+        print(f"curriculum done in {(time.time()-t0)/60:.1f} min", flush=True)
+    else:
+        make_inference_fn, params, _ = train_fn(
+            environment=train_env, eval_env=eval_env)
+        print(f"training done in {(time.time()-t0)/60:.1f} min", flush=True)
 
     if args.dry_run:
         print("DRY RUN OK -- ppo.train completed end to end", flush=True)

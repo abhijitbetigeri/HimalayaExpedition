@@ -215,3 +215,78 @@ looks good.
 - Isaac ice policy: **2.1× fewer falls than baseline on ice, zero falls on rock**.
 - MuJoCo: ice halves survival across 12 paired seeds; six hypotheses tested and
   refuted; ablation shows patches worse than ice itself.
+
+---
+
+# OVERNIGHT ROUND 2 — the self-correcting film loop
+
+## What was wrong with round 1's footage
+
+All of it, and for four separate reasons that each needed a human to spot:
+
+1. **No snow.** Friction was set to 0.20 and called snow. Appearance and physics are
+   configured separately in Isaac Lab and only the physics was ever touched, so
+   "snow" and "rock" rendered as the same grey plane.
+2. **A green blob** larger than the robot in every frame — the velocity-command
+   debug marker.
+3. **Four to six robots** spread across `env_spacing`, seen at wildly different
+   depths. They read as fragments, and post-termination ragdolls looked like the
+   robot exploding.
+4. **White robot on near-white snow** — almost no contrast even once snow existed.
+
+## What is running now
+
+| job | what |
+|---|---|
+| `6a93e87045686a1580c17972` | **getup v3b** on H200 — the positive-reward fix |
+| `6a93e873984507d9db4ecb73` | **autofilm2** on H200 — the self-correcting loop |
+| `6a93e2ec45686a1580c17871` | film-slope2 — pure-slope terrain |
+| `6a93e89e45686a1580c17976` | watchdog v4 — ANSI-safe id parsing |
+
+## autofilm: how it corrects itself
+
+It scores its own output geometrically, so "good" is decidable without a human:
+
+- **coverage** — fraction of non-background pixels. Below 1.5% the subject is a
+  speck or absent; above 30% the camera is inside it.
+- **centring** — centroid of those pixels. Off-centre means the tracking camera is
+  not actually framing the subject.
+
+On a bad score it moves the camera and re-shoots, up to 4 attempts, keeping the
+best. Snow is tinted blue-grey (0.80, 0.86, 0.94) so the white G1 reads against it.
+
+Outputs, in `videos/`:
+- `auto_walk_on_snow_ICE.mp4` / `auto_walk_on_snow_BASELINE.mp4`
+- `auto_snow_slip_recover_walk.mp4` — one continuous take: walk, a shove, handoff
+  to the recovery policy while down, handoff back once upright. **Two networks;
+  say so in the caption — the handoff is the system working, not a trick.**
+- `autofilm_report.json` — per-clip score, camera used, and the frame index of each
+  phase transition
+
+Walk clips are shot BEFORE the recovery wait, so they land even if recovery never
+trains.
+
+## The get-up bug, for the record
+
+v1 and v2 both converged to `success_rate 0.000` with `base_height` -1.83 and -1.81.
+Not a tuning problem: **every remaining reward was negative.** The positive terms
+were zeroed as meaningless lying down, which left only penalties, and with no
+termination the optimal policy was to not move — lying still minimises torque and
+action-rate cost. It was trained to stay down.
+
+v3 adds `standing_bonus`: strictly positive, height x uprightness MULTIPLIED so it
+cannot be collected by rearing up while face-down or by lying flat but level. The
+regularisers are relaxed ~10x because standing up is exactly the large, fast,
+high-torque motion they exist to suppress.
+
+## Watchdog v4
+
+v3 leaked a job every 7 minutes: `hf jobs uv run` prints the id wrapped in ANSI
+colour codes, `token.startswith("id=")` never matched, so it launched real jobs,
+failed to record them, kept seeing the old failed id, and relaunched forever. v4
+strips ANSI and regexes the id, with the hint line as a fallback.
+
+## Before quoting any clip
+
+Check `autofilm_report.json` for its score first. Four batches of bad footage
+reached a human because nobody looked at the frames.

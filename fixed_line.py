@@ -89,6 +89,14 @@ class FixedLineAscent(joystick.Joystick):
         config_overrides: Optional[Dict[str, Union[str, int, list[Any]]]] = None,
     ):
         config = default_config() if config is None else copy.deepcopy(config)
+        # Apply overrides BEFORE reading slope_deg. G1Env applies them itself,
+        # but only after __init__ has already built the scene XML -- so
+        # config_overrides={"line_config.slope_deg": 0} silently produced a
+        # 30 degree scene whose config claimed 0. The geometry and the config
+        # disagreed, and nothing errored.
+        if config_overrides:
+            config.update_from_flattened_dict(dict(config_overrides))
+            config_overrides = None
         slope = config.line_config.slope_deg
         mjx_env.ensure_menagerie_exists()
 

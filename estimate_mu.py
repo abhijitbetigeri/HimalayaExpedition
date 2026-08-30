@@ -171,15 +171,32 @@ MU = textwrap.dedent(f'''
     X = torch.cat(X); Y = torch.cat(Y)
     print(f"dataset: {{tuple(X.shape)}} -> {{tuple(Y.shape)}}", flush=True)
 
-    # Held-out by FRICTION VALUE, not at random: a random split leaks, because
-    # windows from the same episode share a label and would appear on both sides.
-    # Generalising to unseen mu is the claim worth making.
-    lo, hi = torch.quantile(Y, torch.tensor([0.35, 0.65]))
-    test_mask = (Y >= lo) & (Y <= hi)          # hold out the MIDDLE band
+    # Two possible splits, answering different questions. v1 used only the value
+    # split and reported R2 -2.10 with a NaN ice/rock accuracy -- because the
+    # held-out band [0.295, 0.565] contains NO ICE AT ALL, so the operational
+    # question was never actually tested.
+    #
+    #  episode -- new episode, friction from the same range. THE DEPLOYMENT
+    #             QUESTION, and the default.
+    #  value   -- friction never seen in training. Strict extrapolation, harder
+    #             than deployment requires.
+    #
+    # Either way the split is never at random over rows: windows from one episode
+    # share a label, so a random split would leak the answer across the boundary.
+    SPLIT = os.environ.get("MU_SPLIT", "episode")
+    eids = torch.cat(E)
+    if SPLIT == "value":
+        lo, hi = torch.quantile(Y, torch.tensor([0.35, 0.65]))
+        test_mask = (Y >= lo) & (Y <= hi)
+        band = [round(float(lo), 3), round(float(hi), 3)]
+    else:
+        held = torch.unique(eids)[::4]          # every 4th ENV held out entirely
+        test_mask = torch.isin(eids, held)
+        band = None
     Xtr, Ytr = X[~test_mask].to(DEV), Y[~test_mask].to(DEV)
     Xte, Yte = X[test_mask].to(DEV), Y[test_mask].to(DEV)
-    print(f"train {{len(Xtr)}} (mu outside [{{lo:.2f}},{{hi:.2f}}]) / "
-          f"test {{len(Xte)}} (inside)", flush=True)
+    print(f"split={{SPLIT}}  train {{len(Xtr)}}  test {{len(Xte)}}  "
+          f"test mu range [{{Yte.min():.3f}}, {{Yte.max():.3f}}]", flush=True)
 
     mean, std = Xtr.mean(0, keepdim=True), Xtr.std(0, keepdim=True) + 1e-6
     # Predict log mu: the range spans 20x and relative error is what matters.

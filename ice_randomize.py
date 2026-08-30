@@ -100,7 +100,27 @@ SOLIMP_DMAX = (0.75, 0.95)
 SOLIMP_DMIN_OFFSET = 0.05
 
 
+def make_domain_randomize(mu_min: float = ICE_MU_MIN):
+  """Randomizer with a configurable friction floor, for curriculum staging.
+
+  Measured: with the floor at 0.05 from step zero, 37% of feet land on
+  ice-grade friction and the policy never learns to walk AT ALL -- it scored
+  43/501 on plain flat ground, against 455 for a policy trained on the stock
+  range. It failed the prerequisite, not the hard case. Annealing the floor down
+  across stages lets it learn walking first and ice second.
+  """
+
+  def domain_randomize(model: mjx.Model, rng: jax.Array):
+    return _domain_randomize(model, rng, mu_min)
+
+  return domain_randomize
+
+
 def domain_randomize(model: mjx.Model, rng: jax.Array):
+  return _domain_randomize(model, rng, ICE_MU_MIN)
+
+
+def _domain_randomize(model: mjx.Model, rng: jax.Array, mu_min: float):
   @jax.vmap
   def rand_dynamics(rng):
     # CHANGED: per-foot friction spanning ice to rock. See MU_DIST above for why
@@ -115,7 +135,7 @@ def domain_randomize(model: mjx.Model, rng: jax.Array):
             jax.random.uniform(
                 key,
                 shape=(2, 1),
-                minval=jp.log(ICE_MU_MIN),
+                minval=jp.log(mu_min),
                 maxval=jp.log(ROCK_MU_MAX),
             )
         )

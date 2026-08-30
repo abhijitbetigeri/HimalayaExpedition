@@ -231,7 +231,6 @@ FILM = textwrap.dedent('''
             obs_d, _ = env.reset()
             obs = obs_d["policy"] if isinstance(obs_d, dict) else obs_d
 
-            frames = []
             falls = torch.zeros(256, device="cuda:0")
             with torch.inference_mode():
                 for i in range(STEPS):
@@ -239,20 +238,20 @@ FILM = textwrap.dedent('''
                     obs_d, _, term, trunc, _ = env.step(act)
                     obs = obs_d["policy"] if isinstance(obs_d, dict) else obs_d
                     falls += term.float()          # cumulative, not per-step
-                    pass   # no rendering: this run is for numbers
             env.close()
 
-            if frames:
-                path = OUT / f"isaac_{tag}.mp4"
-                pass  # eval only: no video
+            # This run computes numbers and renders nothing, so the results block
+            # must NOT be gated on having frames -- it was, and every cell was
+            # computed and then silently discarded.
+            if True:
                 fpe = falls.mean().item()
                 report[tag] = {
-                    "frames": len(frames), "steps": STEPS,
+                    "steps": STEPS,
                     "falls_per_env": round(fpe, 2),
                     "mean_steps_between_falls": round(STEPS / (fpe + 1e-9), 1)
                                                if fpe > 0 else STEPS,
-                    "file": str(path)}
-                print(f"WROTE {path}  {len(frames)} frames  "
+                    }
+                print(f"{tag}: "
                       f"falls/env {fpe:.2f}  "
                       f"steps between falls "
                       f"{STEPS/(fpe+1e-9) if fpe>0 else STEPS:.0f}", flush=True)

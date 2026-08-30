@@ -172,6 +172,19 @@ took flags.
 cp after ANY edit to `ice_randomize.py` / `wind.py` / `ice_patch.py`, or the job
 silently trains against a stale copy.
 
+**`config_overrides` arrive AFTER `__init__` has built the scene.** `G1Env`
+applies them inside its own `__init__`, so any env that reads a config value to
+*generate geometry* must apply the overrides itself first.
+`FixedLineAscent.__init__` read `line_config.slope_deg` before that happened, so
+`config_overrides={"line_config.slope_deg": 0}` produced a **30 degree scene
+whose config claimed 0**. Nothing errored; the geometry and the config simply
+disagreed, and a whole diagnostic sweep silently measured the same 30 degree
+slope three times. Fixed by applying overrides at the top of `__init__`.
+
+With that fixed, the flat-trained policy survives 100/100 steps on the ascent env
+at 0 and 15 degrees, and falls at ~40/100 on 30 degrees. So the ascent env is
+sound and 30 degrees is simply a task no current policy can do.
+
 **Angles in any scene XML here are RADIANS.** `g1_mjx_feetonly.xml` declares
 `<compiler angle="radian"/>`, and that governs the whole compiled model
 including the parent scene that includes it. `fixed_line_scene.py` emitted
@@ -367,6 +380,25 @@ Note also that `ice-v4-baseline`'s flat control has std 108.6 around a median of
 501 — so several seeds fell well short. Consistent with the finding above that
 the baseline walks on a **minority of seeds**, not all of them. Do not describe
 any baseline here as a known-good control.
+
+## Overnight runs (launched 2026-08-29 ~21:00 PT)
+
+| run | job | what |
+|---|---|---|
+| `ascent-v2` | 6a93b30c... | 100M steps, 20 deg slope, fixed-line ascent. Training cleanly, no NaN -- the earlier `ascent-v1` NaN was almost certainly the 81 degree radian bug. |
+| `ice-curr-v1` | 6a93b58f... | 150M steps, friction curriculum 0.4 -> 0.15 -> 0.05, 50M per stage, each restoring the previous. |
+
+The curriculum is the test of the project's central claim. Stages 1 and 2 put 0%
+of feet below mu 0.15, so the policy learns to walk before it meets ice; only
+stage 3 opens the floor to 0.05 (37% of feet on ice). **The number that matters
+is the flat-terrain control in `eval.json`**: the non-curriculum ice policy
+scored 43/501 there against 455 for the stock-range baseline, i.e. it never
+learned to walk at all. If the curriculum policy's flat control is near 455 AND
+its Himalayan number beats 122, the approach works. If the flat control is still
+~43, the friction distribution is not the problem and the thesis needs rethinking.
+
+Restore-between-stages is verified on cpu-basic, including brax's
+`KERNEL_INITIALIZER[None]` bug, which `patch_checkpoint_load()` shims.
 
 ## Status
 

@@ -47,7 +47,7 @@ os.environ.setdefault("HOME", "/root")
 
 PY = sys.executable
 LAB = "/tmp/IsaacLab"
-OUT = pathlib.Path("/mnt/himalaya-g1/getup-v2")
+OUT = pathlib.Path("/mnt/himalaya-g1/getup-v3")
 TASK = "Isaac-Getup-G1-Ice-v0"
 NUM_ENVS = 4096
 MAX_ITER = int(os.environ.get("MAX_ITER", "3000"))
@@ -70,7 +70,7 @@ sh(f"git clone --depth 1 -q https://github.com/isaac-sim/IsaacLab.git {LAB} && e
    900, "clone", tail=2)
 for pkg in ["isaaclab", "isaaclab_ov", "isaaclab_physx", "isaaclab_ovphysx",
             "isaaclab_newton", "isaaclab_assets", "isaaclab_rl", "isaaclab_tasks",
-            "isaaclab_visualizers"]:
+            "isaaclab_visualizers", "isaaclab_contrib"]:
     sh(f"{PY} -m pip install --no-cache-dir -e {LAB}/source/{pkg} 2>&1 | tail -1",
        1200, f"install {pkg}", tail=1)
 sh(f"{PY} -m pip install --no-cache-dir rsl-rl-lib 2>&1 | tail -1", 600, "rsl_rl", tail=1)
@@ -87,9 +87,30 @@ G1DIR = pathlib.Path(f"{LAB}/source/isaaclab_tasks/isaaclab_tasks/manager_based/
 
     from .flat_env_cfg import G1FlatEnvCfg
 
-    # G1 pelvis height standing. The velocity task uses 0.5 as its base-height
-    # target elsewhere; standing tall is what we actually want to reward here.
+    import torch
+    from isaaclab.assets import Articulation
+    from isaaclab.envs import ManagerBasedRLEnv
+
+    # G1 pelvis height standing.
     STAND_HEIGHT = 0.74
+
+
+    def standing_bonus(env: ManagerBasedRLEnv,
+                       asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")):
+        """Strictly POSITIVE, ~0 when prone, maximal standing upright and tall.
+
+        The whole point is to give recovery something to climb toward. Height and
+        uprightness are multiplied, not added, so the robot cannot collect reward
+        by rearing up while still face-down, nor by lying flat but level.
+
+        projected_gravity_b[:, 2] is -1 when the torso is upright and ~0 on its
+        side, so (-g_z) maps cleanly to [0, 1] as an uprightness score.
+        """
+        asset: Articulation = env.scene[asset_cfg.name]
+        h = asset.data.root_pos_w[:, 2]
+        height_score = torch.exp(-torch.abs(h - STAND_HEIGHT) / 0.25)
+        upright = torch.clamp(-asset.data.projected_gravity_b[:, 2], 0.0, 1.0)
+        return height_score * upright
 
 
     @configclass
@@ -139,20 +160,36 @@ G1DIR = pathlib.Path(f"{LAB}/source/isaaclab_tasks/isaaclab_tasks/manager_based/
             self.rewards.termination_penalty.weight = 0.0
 
             # ---- stand up and stay level -------------------------------------
-            # Uprightness carries more of the signal than height: standing tall
-            # while face-down is not recovery, and orientation gives a gradient from
-            # the very first frame whereas height does not.
-            self.rewards.flat_orientation_l2.weight = -10.0
+            # THE BUG IN v1 AND v2: every remaining reward was NEGATIVE. The
+            # positive terms (velocity tracking, feet air time) were zeroed because
+            # they are meaningless lying down, which left only penalties -- so with
+            # no termination the optimal policy was TO NOT MOVE. Lying still
+            # minimises torque and action-rate cost. Both runs converged to exactly
+            # that: base_height -1.81 and -1.83, success 0.000, twice.
+            #
+            # Recovery needs something to CLIMB TOWARD. `standing_bonus` is
+            # strictly positive, near zero when prone and maximal when upright and
+            # tall, so the gradient points off the ground from the first frame.
+            self.rewards.standing = RewTerm(func=standing_bonus, weight=8.0)
+
+            self.rewards.flat_orientation_l2.weight = -2.0
             self.rewards.base_height = RewTerm(
                 func=mdp.base_height_l2,
-                weight=-10.0,
+                weight=-2.0,
                 params={"target_height": STAND_HEIGHT,
                         "asset_cfg": SceneEntityCfg("robot")},
             )
-            # Discourage thrashing: recovery should look like a push-up, not a
-            # seizure. Slightly stronger than the locomotion defaults.
-            self.rewards.action_rate_l2.weight = -0.01
-            self.rewards.dof_torques_l2.weight = -1.0e-5
+            # Standing up is a large, fast, high-torque motion. The locomotion
+            # defaults penalise exactly that because they are tuned for efficient
+            # walking, so they were fighting the task. Relaxed by ~10x.
+            self.rewards.action_rate_l2.weight = -0.001
+            self.rewards.dof_torques_l2.weight = -1.0e-6
+            self.rewards.dof_acc_l2.weight = -1.0e-8
+            # Deviation penalties assume a nominal standing pose; getting up
+            # requires leaving it entirely.
+            self.rewards.joint_deviation_hip.weight = 0.0
+            self.rewards.joint_deviation_arms.weight = 0.0
+            self.rewards.joint_deviation_torso.weight = 0.0
 
             # ---- on ice ------------------------------------------------------
             # Hands and feet need purchase to push against; 0.06 is what a limb

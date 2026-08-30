@@ -63,6 +63,8 @@ def load_env_file(path=ENV_FILE):
     return loaded
 
 
+_ARGS = None
+
 FAST_CPU = {"impl": "jax", "naconmax": 128}
 
 
@@ -91,6 +93,9 @@ def parse_args():
     # walking robot simply strolls out of shot -- which is exactly what the
     # first LiveKit stream showed. Track by default; --camera "" for the static
     # view.
+    p.add_argument("--slope", type=float, default=15.0,
+                   help="ascent slope in degrees. The flat-trained policy "
+                        "climbs 0-15 deg for a full episode and falls at 30.")
     p.add_argument("--camera", default="track",
                    help='named camera; "track" follows the robot (default), '
                         '"" for the static free camera')
@@ -192,7 +197,8 @@ def _build_env(name):
               flush=True)
     if name == "ascent":
         import fixed_line
-        return fixed_line.load(config_overrides=over)
+        return fixed_line.load(config_overrides={
+            **over, "line_config.slope_deg": _ARGS.slope})
     if name == "flat":
         from mujoco_playground import locomotion
         return locomotion.load("G1JoystickFlatTerrain", config_overrides=over)
@@ -348,7 +354,9 @@ async def publish(frames, fps, args):
 
 
 def main():
+    global _ARGS
     args = parse_args()
+    _ARGS = args
     if args.viewer_token:
         print_viewer_token(args)
         return
