@@ -103,6 +103,10 @@ def main():
                          "mu=0.8: warp survives 251/251, jax FALLS at 112 -- same "
                          "policy, same seed. Use warp for anything you will quote "
                          "or film; jax only for a quick look.")
+    ap.add_argument("--seed", type=int, default=0,
+                    help="rollout seed. Survival varies enormously across seeds -- "
+                         "the 12-seed sweep gave rock 47-511 steps -- so the seed "
+                         "is part of any quoted number, not an incidental detail.")
     ap.add_argument("--mu", type=float, default=None,
                     help="pin foot-floor friction (0.05 = bare ice, 0.8 = dry rock). "
                          "Stock XML value if omitted.")
@@ -159,7 +163,7 @@ def main():
               f"({'ice' if args.mu <= 0.15 else 'rock'})")
 
     reset, step = jax.jit(env.reset), jax.jit(env.step)
-    rng = jax.random.PRNGKey(0)
+    rng = jax.random.PRNGKey(args.seed)
     state = reset(rng)
     state.info["command"] = jp.array([1.0, 0.0, 0.0])   # walk forward
 

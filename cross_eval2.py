@@ -6,7 +6,7 @@
 # index-strategy = "unsafe-best-match"
 # prerelease = "allow"
 # ///
-"""Film the Isaac ice policy actually walking on ice -- flat, and up a steep slope.
+"""Cross-evaluation: every Isaac policy on every surface, identical conditions.
 
 Two earlier attempts at this failed and both failures inform the design:
 
@@ -30,8 +30,8 @@ Run:
   hf jobs uv run --detach --namespace iteratehack --flavor l4x1 --timeout 60m \
       --env OMNI_KIT_ACCEPT_EULA=YES \
       -v hf://buckets/iteratehack/jobs-artifacts:/mnt \
-      --label name=himalaya-traction --label task=isaac-film \
-      isaac_film.py
+      --label name=himalaya-traction --label task=cross-eval \
+      cross_eval2.py
 """
 
 import json
@@ -201,14 +201,13 @@ FILM = textwrap.dedent('''
     from isaaclab_tasks.utils import parse_env_cfg
 
     OUT = pathlib.Path("/mnt/himalaya-g1/videos"); OUT.mkdir(parents=True, exist_ok=True)
-    STEPS = int(os.environ.get("FILM_STEPS", "1500"))   # 1500 * 0.02s = 30 s
+    STEPS = int(os.environ.get("FILM_STEPS", "1000"))   # eval, not footage
 
-    SHOTS = [
-        ("ice",      "ice",      "Isaac-Film-G1-Ice-v0"),
-        ("baseline", "ice",      "Isaac-Film-G1-Ice-v0"),
-        ("ice",      "slopeice", "Isaac-Film-G1-SlopeIce-v0"),
-        ("ice",      "rock",     "Isaac-Film-G1-Rock-v0"),
-    ]
+    # Full matrix, not a shot list: both policies on all three surfaces.
+    SHOTS = [(p, s, t) for p in ("baseline", "ice")
+             for s, t in (("rock", "Isaac-Film-G1-Rock-v0"),
+                          ("ice", "Isaac-Film-G1-Ice-v0"),
+                          ("slopeice", "Isaac-Film-G1-SlopeIce-v0"))]
     report = {}
     for pol_name, surf, task in SHOTS:
         pol_path = f"/tmp/policy_{pol_name}.pt"
@@ -218,7 +217,7 @@ FILM = textwrap.dedent('''
         print(f"\\n=== filming {tag} ===", flush=True)
         try:
             policy = torch.jit.load(pol_path).to("cuda:0").eval()
-            cfg = parse_env_cfg(task, device="cuda:0", num_envs=6)
+            cfg = parse_env_cfg(task, device="cuda:0", num_envs=256)
             # The default view is a fixed wide shot: six robots as specks on a
             # dark grid, gait invisible. Isaac Lab can anchor the camera to an
             # asset and follow it, which is what makes the clip readable.
@@ -233,17 +232,14 @@ FILM = textwrap.dedent('''
             obs = obs_d["policy"] if isinstance(obs_d, dict) else obs_d
 
             frames = []
-            falls = torch.zeros(6, device="cuda:0")
+            falls = torch.zeros(256, device="cuda:0")
             with torch.inference_mode():
                 for i in range(STEPS):
                     act = policy(obs)
                     obs_d, _, term, trunc, _ = env.step(act)
                     obs = obs_d["policy"] if isinstance(obs_d, dict) else obs_d
                     falls += term.float()          # cumulative, not per-step
-                    if i % 2 == 0:                      # 25 fps from a 50 Hz sim
-                        f = env.unwrapped.render()
-                        if f is not None:
-                            frames.append(np.asarray(f))
+                    pass   # no rendering: this run is for numbers
             env.close()
 
             if frames:
@@ -268,7 +264,7 @@ FILM = textwrap.dedent('''
             import traceback; traceback.print_exc()
             report[tag] = {"error": repr(e)}
 
-    (OUT / "isaac_film_report.json").write_text(json.dumps(report, indent=2))
+    (OUT / "isaac_cross_eval.json").write_text(json.dumps(report, indent=2))
     print("\\n" + json.dumps(report, indent=2), flush=True)
     app.close()
 ''')
