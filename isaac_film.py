@@ -121,10 +121,29 @@ G1DIR = pathlib.Path(f"{LAB}/source/isaaclab_tasks/isaaclab_tasks/manager_based/
 
     @configclass
     class G1FilmIceCfg(_FilmBase):
+        """Bare wet ice, mu=0.08. Near the limit -- humans fall here too."""
         def __post_init__(self):
             super().__post_init__()
             self.events.physics_material.params["static_friction_range"] = (0.08, 0.08)
             self.events.physics_material.params["dynamic_friction_range"] = (0.06, 0.06)
+
+
+    @configclass
+    class G1FilmSnowCfg(_FilmBase):
+        """Packed snow / neve, mu=0.20 -- what an approach march actually crosses."""
+        def __post_init__(self):
+            super().__post_init__()
+            self.events.physics_material.params["static_friction_range"] = (0.20, 0.20)
+            self.events.physics_material.params["dynamic_friction_range"] = (0.16, 0.16)
+
+
+    @configclass
+    class G1FilmHardIceCfg(_FilmBase):
+        """Hard glacial ice, mu=0.12 -- crampon country, between the two."""
+        def __post_init__(self):
+            super().__post_init__()
+            self.events.physics_material.params["static_friction_range"] = (0.12, 0.12)
+            self.events.physics_material.params["dynamic_friction_range"] = (0.10, 0.10)
 
 
     # ---- the mountain case: bare ice on a steep pyramid slope --------------------
@@ -148,12 +167,16 @@ G1DIR = pathlib.Path(f"{LAB}/source/isaaclab_tasks/isaaclab_tasks/manager_based/
 
     @configclass
     class G1FilmSlopeIceCfg(_FilmBase):
+        """Snow-covered slope: the mountain case at a friction that is walkable."""
         def __post_init__(self):
             super().__post_init__()
             self.scene.terrain.terrain_type = "generator"
             self.scene.terrain.terrain_generator = SLOPE_TERRAIN
-            self.events.physics_material.params["static_friction_range"] = (0.08, 0.08)
-            self.events.physics_material.params["dynamic_friction_range"] = (0.06, 0.06)
+            self.events.physics_material.params["static_friction_range"] = (0.20, 0.20)
+            self.events.physics_material.params["dynamic_friction_range"] = (0.16, 0.16)
+            # One robot on sloped terrain: with six the camera anchors on a distant
+            # env origin and the subject ends up a speck.
+            self.scene.num_envs = 1
 '''))
 
 with open(G1DIR / "__init__.py", "a") as f:
@@ -164,7 +187,9 @@ with open(G1DIR / "__init__.py", "a") as f:
 
         for _id, _cls in [("Isaac-Film-G1-Rock-v0", "G1FilmRockCfg"),
                           ("Isaac-Film-G1-Ice-v0", "G1FilmIceCfg"),
-                          ("Isaac-Film-G1-SlopeIce-v0", "G1FilmSlopeIceCfg")]:
+                          ("Isaac-Film-G1-SlopeIce-v0", "G1FilmSlopeIceCfg"),
+                          ("Isaac-Film-G1-Snow-v0", "G1FilmSnowCfg"),
+                          ("Isaac-Film-G1-HardIce-v0", "G1FilmHardIceCfg")]:
             gym.register(
                 id=_id,
                 entry_point="isaaclab.envs:ManagerBasedRLEnv",
@@ -204,10 +229,11 @@ FILM = textwrap.dedent('''
     STEPS = int(os.environ.get("FILM_STEPS", "1500"))   # 1500 * 0.02s = 30 s
 
     SHOTS = [
-        ("ice",      "ice",      "Isaac-Film-G1-Ice-v0"),
-        ("baseline", "ice",      "Isaac-Film-G1-Ice-v0"),
-        ("ice",      "slopeice", "Isaac-Film-G1-SlopeIce-v0"),
-        ("ice",      "rock",     "Isaac-Film-G1-Rock-v0"),
+        ("ice",      "snow",     "Isaac-Film-G1-Snow-v0"),      # walkable?
+        ("baseline", "snow",     "Isaac-Film-G1-Snow-v0"),      # the contrast
+        ("ice",      "hardice",  "Isaac-Film-G1-HardIce-v0"),
+        ("baseline", "hardice",  "Isaac-Film-G1-HardIce-v0"),
+        ("ice",      "slopesnow","Isaac-Film-G1-SlopeIce-v0"),  # the mountain shot
     ]
     report = {}
     for pol_name, surf, task in SHOTS:

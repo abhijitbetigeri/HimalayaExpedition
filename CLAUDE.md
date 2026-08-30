@@ -172,6 +172,20 @@ took flags.
 cp after ANY edit to `ice_randomize.py` / `wind.py` / `ice_patch.py`, or the job
 silently trains against a stale copy.
 
+**Angles in any scene XML here are RADIANS.** `g1_mjx_feetonly.xml` declares
+`<compiler angle="radian"/>`, and that governs the whole compiled model
+including the parent scene that includes it. `fixed_line_scene.py` emitted
+`euler="0 -30 0"` intending 30 degrees and got **30 radians = 81 degrees**: the
+floor normal compiled to (0.988, 0, 0.154) instead of (-0.5, 0, 0.866), so the
+"30 degree slope" was a near-vertical wall.
+
+This invalidates everything run against the ascent env before it was fixed --
+including the `ascent-v1` NaN, which was training a humanoid to walk up an 81
+degree face. It also explains the "robot falls through the floor" behaviour in
+the ascent scene specifically, which was NOT the stock feetonly artefact
+described below. It surfaced only because the onboard camera showed sky where
+the ground should have been; nothing in the physics complained.
+
 **Zero-action rollouts fall through the floor (torso z ≈ −0.67).** This is stock
 behavior, not a bug in our code. `done=1` fires but nothing resets without the
 brax auto-reset wrapper. Do not go debugging it.

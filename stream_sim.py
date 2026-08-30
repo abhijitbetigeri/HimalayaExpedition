@@ -22,6 +22,7 @@ connecting to anything, so the whole pipeline can be checked without an account.
 
 import argparse
 import asyncio
+import contextlib
 import os
 import pathlib
 import time
@@ -97,6 +98,10 @@ def parse_args():
     p.add_argument("--once", dest="loop", action="store_false")
     p.add_argument("--dry-run", action="store_true",
                    help="render and report, never connect")
+    p.add_argument("--pov", action="store_true", default=True,
+                   help="also publish the robot's onboard camera as a second "
+                        "track (default). --no-pov for chase only.")
+    p.add_argument("--no-pov", dest="pov", action="store_false")
     p.add_argument("--viewer-token", action="store_true",
                    help="mint a subscribe-only viewer token and a meet.livekit.io "
                         "link, print them, and exit. Runs no simulation.")
@@ -168,7 +173,19 @@ def _camera_names(env):
             for i in range(m.ncam)]
 
 
-def build_env(name):
+def build_env(name, pov=True):
+    """Build the env, optionally with the onboard camera injected.
+
+    The POV camera is added by rewriting the robot XML in memory during
+    construction (see pov_camera.py); the patch is removed immediately after.
+    """
+    import pov_camera
+    ctx = pov_camera.pov_assets() if pov else contextlib.nullcontext()
+    with ctx:
+        return _build_env(name)
+
+
+def _build_env(name):
     over = cpu_overrides()
     if over:
         print(f"off-GPU: using {over} (stock impl='warp' is ~3x slower here)",
@@ -212,13 +229,19 @@ def rollout(env, args):
     sim_s = time.time() - t0
 
     t0 = time.time()
-    cam = args.camera or None
-    if cam and cam not in _camera_names(env):
-        print(f"WARN: no camera '{cam}' in this scene; using the static view",
-              flush=True)
-        cam = None
-    print(f"camera: {cam or 'static free camera'}", flush=True)
-    frames = env.render(traj, height=args.height, width=args.width, camera=cam)
+    names = _camera_names(env)
+
+    def render_cam(cam):
+        if cam and cam not in names:
+            print(f"WARN: no camera '{cam}' in this scene; static view instead",
+                  flush=True)
+            cam = None
+        print(f"rendering camera: {cam or 'static free camera'}", flush=True)
+        return env.render(traj, height=args.height, width=args.width, camera=cam)
+
+    frames = {"chase": render_cam(args.camera or None)}
+    if args.pov:
+        frames["pov"] = render_cam("pov")
     render_s = time.time() - t0
 
     fps = 1.0 / env.dt
@@ -262,38 +285,61 @@ async def publish(frames, fps, args):
              .to_jwt())
 
     room = rtc.Room()
+
+    # A dropped connection is otherwise INVISIBLE: capture_frame() on a dead
+    # room silently no-ops, so the loop happily reports "looped (249021 frames
+    # sent)" while the server returns 404 for the room. Found exactly that way.
+    alive = {"ok": True}
+
+    @room.on("disconnected")
+    def _on_disconnected(*a):
+        alive["ok"] = False
+        print("DISCONNECTED by server -- stopping", flush=True)
+
     await room.connect(url, token)
     print(f"connected to room '{args.room}' as '{args.identity}'", flush=True)
 
-    source = rtc.VideoSource(args.width, args.height)
-    track = rtc.LocalVideoTrack.create_video_track("g1-sim", source)
-    await room.local_participant.publish_track(
-        track, rtc.TrackPublishOptions(source=rtc.TrackSource.SOURCE_CAMERA))
-    print(f"publishing {len(frames)} frames at {fps:.0f} fps"
-          f"{' (looping)' if args.loop else ''}", flush=True)
+    sources = {}
+    for name, seq in frames.items():
+        src = rtc.VideoSource(args.width, args.height)
+        track = rtc.LocalVideoTrack.create_video_track(f"g1-{name}", src)
+        await room.local_participant.publish_track(
+            track, rtc.TrackPublishOptions(source=rtc.TrackSource.SOURCE_CAMERA))
+        sources[name] = src
+        print(f"publishing track 'g1-{name}' ({len(seq)} frames)", flush=True)
+    print(f"{fps:.0f} fps{' (looping)' if args.loop else ''}", flush=True)
 
-    # RGB -> RGBA once, up front. Doing this per frame in the publish loop
-    # would add jitter to the one thing that has to stay on a clock.
-    rgba = []
-    for f in frames:
-        a = np.asarray(f, dtype=np.uint8)
-        buf = np.dstack([a, np.full(a.shape[:2] + (1,), 255, np.uint8)])
-        rgba.append(buf.tobytes())
+    # RGB -> RGBA once, up front. Per-frame conversion inside the publish loop
+    # would add jitter to the one thing that must stay on a clock.
+    rgba = {}
+    for name, seq in frames.items():
+        buf = []
+        for f in seq:
+            a = np.asarray(f, dtype=np.uint8)
+            buf.append(np.dstack(
+                [a, np.full(a.shape[:2] + (1,), 255, np.uint8)]).tobytes())
+        rgba[name] = buf
 
     period = 1.0 / fps
+    n_frames = min(len(v) for v in rgba.values())
     try:
         n = 0
         next_t = time.perf_counter()
-        while True:
-            for b in rgba:
-                source.capture_frame(rtc.VideoFrame(
-                    args.width, args.height, rtc.VideoBufferType.RGBA, b))
+        while alive["ok"]:
+            for i in range(n_frames):
+                if not alive["ok"]:
+                    break
+                for name, src in sources.items():
+                    src.capture_frame(rtc.VideoFrame(
+                        args.width, args.height, rtc.VideoBufferType.RGBA,
+                        rgba[name][i]))
                 n += 1
                 next_t += period
                 await asyncio.sleep(max(0.0, next_t - time.perf_counter()))
             if not args.loop:
                 break
-            print(f"looped ({n} frames sent)", flush=True)
+            state = room.connection_state
+            print(f"looped ({n} frames sent, state={state})", flush=True)
     except (KeyboardInterrupt, asyncio.CancelledError):
         pass
     finally:

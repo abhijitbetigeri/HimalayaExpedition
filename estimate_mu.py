@@ -162,7 +162,7 @@ MU = textwrap.dedent(f'''
             # Skip envs that reset this step: their history straddles two episodes
             # (and two friction draws), so those windows are mislabelled.
             fresh = ~(term.bool() | trunc.bool())
-            if step >= WARMUP and step %% 3 == 0:
+            if step >= WARMUP and step % 3 == 0:
                 X.append(ring[fresh].reshape(int(fresh.sum()), -1).cpu())
                 Y.append(mu_true[fresh].cpu())
     env.close()
@@ -197,7 +197,7 @@ MU = textwrap.dedent(f'''
                 net((Xtr[idx] - mean) / std).squeeze(-1), ytr[idx])
             opt.zero_grad(); loss.backward(); opt.step()
             tot += loss.item() * len(idx)
-        if ep %% 10 == 9:
+        if ep % 10 == 9:
             with torch.no_grad():
                 pt = net((Xte - mean) / std).squeeze(-1)
                 r2 = 1 - ((pt - yte)**2).sum() / ((yte - yte.mean())**2).sum()

@@ -64,6 +64,7 @@ import os
 import pathlib
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 
@@ -137,6 +138,45 @@ def resolve_checkpoint(path: str) -> pathlib.Path:
     return p
 
 
+def load_policy(path: pathlib.Path):
+    """`ppo_checkpoint.load_policy` cannot read the checkpoints this repo writes.
+
+    brax serialises an UNSET optional initializer as JSON null, then on load does
+    `KERNEL_INITIALIZER[init_fn_name_]` for every key that is present -- guarding
+    only against the key being absent, not against it being null
+    (brax/training/checkpoint.py:229). Every checkpoint here carries
+    `"mean_kernel_init_fn": null`, so the stock loader dies with `KeyError: None`.
+
+    `local_view.py` fixes this by rewriting the config file in place. That is fine
+    for its local download, but on a job box that path is the SHARED team bucket,
+    so this sanitises a copy in a temp dir and leaves the artifact untouched.
+
+    Substituting lecun_uniform for null is safe: initializers only supply INITIAL
+    weights and we are restoring trained ones over the top.
+    """
+    cfg = json.loads((path / "ppo_network_config.json").read_text())
+    kw = cfg.get("network_factory_kwargs", {})
+    patched = [k for k, v in kw.items()
+               if k.endswith("_kernel_init_fn") and v is None]
+    for k in patched:
+        kw[k] = "lecun_uniform"
+    if patched:
+        print(f"sanitised brax null initializers: {patched}", flush=True)
+
+    from brax.training import checkpoint as brax_checkpoint
+    from brax.training.agents.ppo import checkpoint as ppo_checkpoint
+    from brax.training.agents.ppo import networks as ppo_networks
+
+    with tempfile.TemporaryDirectory() as td:
+        tmp = pathlib.Path(td) / "ppo_network_config.json"
+        tmp.write_text(json.dumps(cfg))
+        config = brax_checkpoint.load_config(tmp)
+
+    params = ppo_checkpoint.load(path)
+    network = brax_checkpoint.get_network(config, ppo_networks.make_ppo_networks)
+    return ppo_networks.make_inference_fn(network)(params, deterministic=True)
+
+
 class Sim:
     """Owns the policy, the env and a PERSISTENT renderer.
 
@@ -148,11 +188,10 @@ class Sim:
 
     def __init__(self, args):
         import ice_patch
-        from brax.training.agents.ppo import checkpoint as ppo_checkpoint
 
         self.env = ice_patch.load(args.task)  # full stack, as in train_ice eval
         self.inference_fn = jax.jit(
-            ppo_checkpoint.load_policy(resolve_checkpoint(args.checkpoint)))
+            load_policy(resolve_checkpoint(args.checkpoint)))
         self._reset = jax.jit(self.env.reset)
         self._step = jax.jit(self.env.step)
 
@@ -197,6 +236,10 @@ class Sim:
         self.steps += 1
         if float(self.state.done) == 0.0:
             self.survived += 1
+        # Tracked here, not in telemetry(): --bench never publishes telemetry, so
+        # updating it there left the bench summary reporting the initial 1.0.
+        self.min_mu = min(self.min_mu, float(
+            jp.min(self.state.info.get("foot_mu", jp.ones(2)))))
 
     def render(self) -> np.ndarray:
         """Render current state into the preallocated RGBA buffer."""
@@ -213,7 +256,6 @@ class Sim:
     def telemetry(self, command) -> dict:
         info = self.state.info
         mu = float(jp.min(info.get("foot_mu", jp.ones(2))))
-        self.min_mu = min(self.min_mu, mu)
         return {
             "step": self.steps,
             "foot_mu": round(mu, 4),

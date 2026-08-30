@@ -41,6 +41,7 @@ import jax
 import jax.numpy as jp
 from ml_collections import config_dict
 from mujoco import mjx
+from mujoco import mjx
 from mujoco_playground._src import mjx_env
 from mujoco_playground._src.locomotion.g1 import base as g1_base
 from mujoco_playground._src.locomotion.g1 import joystick
@@ -66,6 +67,10 @@ def default_config() -> config_dict.ConfigDict:
         # Recompute the tether force at every physics substep instead of once
         # per control step. See _with_substep_tether for why this is opt-in.
         substep=False,
+        # Heading jitter about the fall line, radians. NOT Playground's +/-pi:
+        # facing downhill makes the ascent reward pay for descending.
+        start_yaw_jitter=0.35,
+        start_xy_jitter=0.15,
     )
     # Reward per metre gained along the fall line. This is the actual task;
     # everything inherited from Joystick is there to keep it walking while it
@@ -218,8 +223,51 @@ class FixedLineAscent(joystick.Joystick):
         del rng
         return jp.array([0.8, 0.0, 0.0])
 
+
+    def _face_uphill(self, state: mjx_env.State) -> mjx_env.State:
+        """Point the robot up the fall line and put it back on the rope.
+
+        Playground's reset randomizes yaw over the FULL +/-pi and offsets xy by
+        +/-0.5 m (joystick.py:259-267). For flat walking that is harmless -- the
+        joystick command is in the robot frame, so any heading is equivalent.
+
+        For ascent it destroys the task. The command is pinned to "forward" and
+        the slope is what converts forward into height, so a robot spawned
+        facing downhill is rewarded for walking DOWN the mountain, and one
+        spawned sideways traverses. Measured on the first four seeds: three of
+        the four faced away from the slope. The lateral offset matters too --
+        the tether anchors on the line, so starting 0.5 m off it begins the
+        episode with the rope already loaded.
+
+        So: reset the heading to up-slope with a modest jitter (keeps variety,
+        keeps the task well-posed) and pull xy back near the line.
+        """
+        cfg = self._config.line_config
+        rng, yaw_rng, xy_rng = jax.random.split(state.info["rng"], 3)
+
+        yaw = jax.random.uniform(
+            yaw_rng, minval=-cfg.start_yaw_jitter, maxval=cfg.start_yaw_jitter)
+        # Fall line runs along +x, so up-slope heading is yaw = 0.
+        quat = jp.array([jp.cos(yaw / 2), 0.0, 0.0, jp.sin(yaw / 2)])
+        dxy = jax.random.uniform(
+            xy_rng, (2,), minval=-cfg.start_xy_jitter, maxval=cfg.start_xy_jitter)
+
+        qpos = state.data.qpos
+        qpos = qpos.at[0:2].set(dxy)
+        qpos = qpos.at[3:7].set(quat)
+        data = mjx.forward(self.mjx_model, state.data.replace(qpos=qpos))
+
+        state.info["rng"] = rng
+        contact = jp.array([
+            data.sensordata[self._mj_model.sensor_adr[sid]] > 0
+            for sid in self._feet_floor_found_sensor
+        ])
+        obs = self._get_obs(data, state.info, contact)
+        return state.replace(data=data, obs=obs)
+
     def reset(self, rng: jax.Array) -> mjx_env.State:
         state = super().reset(rng)
+        state = self._face_uphill(state)
         s0 = self._project(state.data)
         state.info["asc_s"] = s0
         state.info["last_s"] = s0

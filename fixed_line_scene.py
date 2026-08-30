@@ -58,6 +58,14 @@ def build_scene_xml(slope_deg: float = 30.0) -> str:
 
     # The robot stands upright (gravity-aligned, not slope-aligned) at x=0, so
     # its pelvis sits at the usual standing height above the surface there.
+    # RADIANS, not degrees. The included g1_mjx_feetonly.xml declares
+    # <compiler angle="radian">, and that setting governs the whole compiled
+    # model -- so euler="0 -30 0" was read as -30 RADIANS = 81 degrees. The
+    # "30 degree slope" was a near-vertical wall: the floor normal came out
+    # (0.988, 0, 0.154) instead of (-0.5, 0, 0.866). That is why the robot
+    # "fell through the floor" here and why the onboard camera saw only sky.
+    slope_rad = -a
+
     start_z = 0.785
     start_z_bent = 0.755
 
@@ -72,7 +80,11 @@ def build_scene_xml(slope_deg: float = 30.0) -> str:
     return f"""<mujoco model="g1 fixed line ascent">
   <include file="g1_mjx_feetonly.xml"/>
 
-  <statistic center="2 0 2" extent="6" meansize="0.04"/>
+  <!-- Sized around where the robot starts, not the middle of the rope.
+       MuJoCo derives the rendered ground patch, shadow map and lighting
+       ranges from these; center="2 0 2" extent="6" pushed the lit patch up
+       the slope and left the onboard camera staring at an unlit wedge. -->
+  <statistic center="0 0 0.8" extent="2.5" meansize="0.04"/>
 
   <visual>
     <headlight diffuse=".8 .8 .8" ambient=".2 .2 .2" specular="1 1 1"/>
@@ -85,19 +97,28 @@ def build_scene_xml(slope_deg: float = 30.0) -> str:
   <asset>
     <texture type="skybox" builtin="gradient" rgb1=".7 .8 .9" rgb2="1 1 1"
       width="800" height="800"/>
+    <!-- Snow is white, but white-on-white is unreadable from the onboard
+         camera: measured mean RGB 237 for the ground against 211/222/235 for
+         the sky, i.e. the slope was rendering and simply could not be seen.
+         Keep it snow-coloured, but give the checker real contrast and a finer
+         repeat so the surface reads as a surface at close range. -->
     <texture type="2d" name="groundplane" builtin="checker" mark="edge"
-      rgb1=".9 .92 .95" rgb2=".8 .84 .88" markrgb=".3 .3 .3"
-      width="300" height="300"/>
+      rgb1=".97 .98 1" rgb2=".62 .70 .80" markrgb=".25 .30 .38"
+      width="512" height="512"/>
     <material name="groundplane" texture="groundplane" texuniform="true"
-      texrepeat="8 8" reflectance="0.1"/>
+      texrepeat="1.5 1.5" reflectance="0.05"/>
     <material name="ropemat" rgba=".85 .3 .2 1"/>
     <material name="ascmat" rgba=".2 .5 .9 1"/>
   </asset>
 
   <worldbody>
     <!-- The slope. euler y rotates the plane normal off vertical. -->
-    <geom name="floor" type="plane" size="0 0 0.01" material="groundplane"
-      euler="0 {-slope_deg} 0"/>
+    <!-- Explicit half-extents, NOT size="0 0 .01". An infinite plane is drawn
+         as a finite quad sized from stat.extent, so the onboard camera was
+         looking past the drawn patch at open sky with a hard edge where the
+         quad stopped. 30 m of slope is well beyond anything a rollout covers. -->
+    <geom name="floor" type="plane" size="30 30 0.05" material="groundplane"
+      euler="0 {slope_rad:.6f} 0"/>
 
     <!-- Fixed line: taut, anchored, therefore a static capsule. -->
     <geom name="rope" type="capsule" material="ropemat"
