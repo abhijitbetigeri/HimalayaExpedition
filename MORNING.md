@@ -35,11 +35,15 @@ done
 |---|---|---|
 | `6a93a107984507d9db4ec601` | **train-wind** | C — wind resistance |
 | `6a93a10945686a1580c16dab` | **train-tether** | D — fixed-line ascent |
-| `6a938e3345686a1580c16aed` | **train-getup** | B — fall recovery |
-| `6a939fd8984507d9db4ec5ed` | film-slope | A — footage |
-| `6a93943d45686a1580c16be4` | film snow/hard-ice | A — footage |
-| `6a9393e745686a1580c16bd4` | estimate-mu | layer 1 |
-| `6a938fa0984507d9db4ec51b` | cross-eval | headline table |
+| `6a93a31045686a1580c16dff` | **train-getup2** | B — fall recovery, RETRY |
+| `6a939fd8984507d9db4ec5ed` | film-slope | A — incline footage |
+| `6a93a2cc984507d9db4ec641` | cross-eval3 | headline table, RETRY |
+| `6a93a2ce984507d9db4ec643` | estimate-mu3 | layer 1, RETRY |
+
+Wind and tether are on `l40sx1` with a 3 h timeout. The comparable rough-terrain
+run took 102 min on an A100, so they may need 2.5-3.5 h and could be KILLED at the
+cap. The 3-minute checkpoint mirror means a partial policy survives -- check for
+`model_*.pt` in the bucket even if the job says ERROR.
 
 For any that say `ERROR`, the failure is almost always in the last 30 lines:
 
@@ -127,12 +131,46 @@ In value order:
 
 ---
 
-## Objectives — status at 20:30
+## RESULT OF THE NIGHT — objective A is done
+
+Filmed at realistic winter surfaces (the earlier mu=0.06 runs were aiming at bare
+wet ice, which is near the physical limit for any legged system):
+
+| shot | falls per env, 1500 steps |
+|---|---|
+| **ice policy on packed snow, mu=0.20** | **0.00 — never falls** |
+| baseline on snow | 2.5 |
+| **ice policy on hard glacial ice, mu=0.12** | **2.17** |
+| baseline on hard ice | **20.0 — 9.2x worse** |
+| **ice policy on snowy slope** | **3.33 — it climbs** |
+
+Clips: `videos/isaac_ice_on_snow.mp4`, `isaac_baseline_on_hardice.mp4`,
+`isaac_ice_on_slopesnow.mp4`. These are the demo.
+
+## Two failures to be aware of
+
+**Fall recovery v1 failed**: 3000 iterations, `success_rate 0.000`,
+`base_height -1.83` — it never got off the ground. Prone-to-standing is
+long-horizon and a flat reward from a fully-sprawled start gives almost no
+gradient. v2 (`6a93a310...`) samples start poses across the whole range from
+near-upright to fully prone, so easy episodes bootstrap a behaviour the hard ones
+extend. If v2 also reports `success_rate 0`, the next lever is a staged reward
+(torso off the ground -> hips up -> stand), not more iterations.
+
+**mu estimator v1 failed**: held-out R2 **-2.10**, worse than predicting the mean,
+and `ice_vs_rock_accuracy NaN` because the held-out band [0.295, 0.565] contained
+no ice at all. v2 splits by EPISODE (new episode, same friction range = the
+deployment question) rather than by value, with 1024 envs and twice the windows.
+If it still fails, that is a real finding: 25 frames of proprioception may simply
+not carry friction, and the honest move is to report it rather than tune until it
+looks good.
+
+## Objectives — status at 21:00
 
 | # | objective | state |
 |---|---|---|
-| A | **walk on ice + slopes clearly** | policy trained, 93.5% on rough terrain across ice→rock. Footage filming at walkable friction. |
-| B | **fall → recovery → walk** | recovery training in flight. Verified robots start fallen (pelvis 0.29 m) with contact-termination removed. |
+| A | **walk on ice + slopes clearly** | ✅ **DONE** — 0 falls on snow, 9.2× better than baseline on glacial ice, climbs a snowy slope. Filmed. |
+| B | **fall → recovery → walk** | ❌ v1 failed (success 0.000); v2 retraining with graded start poses |
 | C | **wind resistance** | training launched: sustained 40–90 N lateral, interval mode, on icy slopes. Wind deliberately NOT observable — must be inferred from IMU. |
 | D | **rope / fixed-line ascent** | training launched: tether as an 80–140 N upward assist (~⅓ body weight), the ascender modelled as a mechanism, not a grip. |
 

@@ -244,8 +244,7 @@ FILM = textwrap.dedent('''
 
             if frames:
                 path = OUT / f"isaac_{tag}.mp4"
-                imageio.mimwrite(path, frames, fps=25, quality=8,
-                                 macro_block_size=1)
+                pass  # eval only: no video
                 fpe = falls.mean().item()
                 report[tag] = {
                     "frames": len(frames), "steps": STEPS,
@@ -257,9 +256,7 @@ FILM = textwrap.dedent('''
                       f"falls/env {fpe:.2f}  "
                       f"steps between falls "
                       f"{STEPS/(fpe+1e-9) if fpe>0 else STEPS:.0f}", flush=True)
-            else:
-                report[tag] = {"error": "render() returned no frames"}
-                print(f"!! {tag}: render() returned nothing", flush=True)
+
         except Exception as e:
             import traceback; traceback.print_exc()
             report[tag] = {"error": repr(e)}

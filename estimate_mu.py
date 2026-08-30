@@ -131,7 +131,7 @@ MU = textwrap.dedent(f'''
     from isaaclab_tasks.utils import parse_env_cfg
 
     DEV = "cuda:0"
-    N_ENVS, WARMUP, COLLECT = 512, 60, 260
+    N_ENVS, WARMUP, COLLECT = 1024, 60, 400
     HIST = 25                      # COLA ablated 10/25/50 and chose 25
     OUT = pathlib.Path("/mnt/himalaya-g1/mu_estimator"); OUT.mkdir(parents=True, exist_ok=True)
 
@@ -152,7 +152,7 @@ MU = textwrap.dedent(f'''
           f"mean {{mu_true.mean():.3f}}", flush=True)
 
     ring = torch.zeros(N_ENVS, HIST, OBS_D, device=DEV)
-    X, Y = [], []
+    X, Y, E = [], [], []
     with torch.inference_mode():
         for step in range(WARMUP + COLLECT):
             act = policy(obs)
@@ -162,9 +162,10 @@ MU = textwrap.dedent(f'''
             # Skip envs that reset this step: their history straddles two episodes
             # (and two friction draws), so those windows are mislabelled.
             fresh = ~(term.bool() | trunc.bool())
-            if step >= WARMUP and step % 3 == 0:
+            if step >= WARMUP and step % 2 == 0:
                 X.append(ring[fresh].reshape(int(fresh.sum()), -1).cpu())
                 Y.append(mu_true[fresh].cpu())
+                E.append(torch.arange(N_ENVS, device=DEV)[fresh].cpu())
     env.close()
 
     X = torch.cat(X); Y = torch.cat(Y)
@@ -218,7 +219,7 @@ MU = textwrap.dedent(f'''
            "ice_vs_rock_accuracy": round(acc, 4),
            "history_len": HIST, "obs_dim": OBS_D,
            "n_train": len(Xtr), "n_test": len(Xte),
-           "heldout_mu_band": [round(lo.item(), 3), round(hi.item(), 3)]}}
+           "split": SPLIT, "heldout_mu_band": band}}
     print("\\n" + json.dumps(res, indent=2), flush=True)
     (OUT / "mu_estimator_results.json").write_text(json.dumps(res, indent=2))
     torch.save({{"state_dict": net.state_dict(), "mean": mean.cpu(), "std": std.cpu(),

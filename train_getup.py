@@ -47,7 +47,7 @@ os.environ.setdefault("HOME", "/root")
 
 PY = sys.executable
 LAB = "/tmp/IsaacLab"
-OUT = pathlib.Path("/mnt/himalaya-g1/getup")
+OUT = pathlib.Path("/mnt/himalaya-g1/getup-v2")
 TASK = "Isaac-Getup-G1-Ice-v0"
 NUM_ENVS = 4096
 MAX_ITER = int(os.environ.get("MAX_ITER", "3000"))
@@ -101,16 +101,26 @@ G1DIR = pathlib.Path(f"{LAB}/source/isaaclab_tasks/isaaclab_tasks/manager_based/
             # z is an OFFSET from the default root height, so -0.45 puts the pelvis
             # near the floor. Full yaw, and roll/pitch wide enough to produce
             # face-down, back-down and side-down starts rather than one pose.
+            # v1 started FULLY sprawled -- z -0.50..-0.40 with roll across the
+            # whole circle -- and after 3000 iterations success_rate was 0.000 with
+            # base_height -1.83, i.e. it never got off the ground. Prone-to-standing
+            # is long-horizon and that start gives almost no gradient toward
+            # standing.
+            #
+            # v2 spans the range instead: some episodes start nearly upright (a
+            # stumble), some half-down, some fully prone. The easy ones bootstrap a
+            # recovery behaviour that the hard ones can then extend -- a curriculum
+            # by sampling rather than by scheduling, which needs no extra machinery.
             self.events.reset_base.params["pose_range"] = {
-                "x": (-0.3, 0.3), "y": (-0.3, 0.3), "z": (-0.50, -0.40),
-                "roll": (-3.14, 3.14), "pitch": (-1.2, 1.2), "yaw": (-3.14, 3.14),
+                "x": (-0.3, 0.3), "y": (-0.3, 0.3), "z": (-0.45, -0.05),
+                "roll": (-1.8, 1.8), "pitch": (-1.0, 1.0), "yaw": (-3.14, 3.14),
             }
             self.events.reset_base.params["velocity_range"] = {
                 "x": (0.0, 0.0), "y": (0.0, 0.0), "z": (0.0, 0.0),
                 "roll": (0.0, 0.0), "pitch": (0.0, 0.0), "yaw": (0.0, 0.0),
             }
             # Sprawled limbs, not a tidy default pose.
-            self.events.reset_robot_joints.params["position_range"] = (0.4, 1.6)
+            self.events.reset_robot_joints.params["position_range"] = (0.6, 1.4)
 
             # ---- being on the ground is the PREMISE, not a failure -----------
             self.terminations.base_contact = None
@@ -129,7 +139,10 @@ G1DIR = pathlib.Path(f"{LAB}/source/isaaclab_tasks/isaaclab_tasks/manager_based/
             self.rewards.termination_penalty.weight = 0.0
 
             # ---- stand up and stay level -------------------------------------
-            self.rewards.flat_orientation_l2.weight = -5.0
+            # Uprightness carries more of the signal than height: standing tall
+            # while face-down is not recovery, and orientation gives a gradient from
+            # the very first frame whereas height does not.
+            self.rewards.flat_orientation_l2.weight = -10.0
             self.rewards.base_height = RewTerm(
                 func=mdp.base_height_l2,
                 weight=-10.0,
@@ -205,7 +218,7 @@ VERIFY = textwrap.dedent(f'''
     h = env.unwrapped.scene["robot"].data.root_pos_w[:, 2]
     print(f"start pelvis height: mean {{h.mean():.3f}} min {{h.min():.3f}} "
           f"max {{h.max():.3f}}", flush=True)
-    assert h.mean() < 0.45, f"robots are not starting fallen (mean {{h.mean():.3f}})"
+    assert h.mean() < 0.60, f"robots are not starting fallen (mean {{h.mean():.3f}})"
     print("VERIFY_OK", flush=True)
     env.close(); app.close()
 ''')
