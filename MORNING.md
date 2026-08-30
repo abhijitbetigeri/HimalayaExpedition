@@ -8,6 +8,25 @@ Read `STATE.md` for the durable state and `ISAAC_TRACK.md` for the HF Jobs recip
 
 ---
 
+## Step 0 — read the watchdog first (30 seconds)
+
+A supervisor job runs on cpu-basic all night, polls every 10 min, and RELAUNCHES
+anything that ERRORs (max 2 retries each, manifest-restricted, never cancels).
+Its decisions are the fastest summary of the night:
+
+```bash
+hf buckets cp hf://buckets/iteratehack/jobs-artifacts/himalaya-g1/watchdog_log.txt - | tail -40
+hf buckets cp hf://buckets/iteratehack/jobs-artifacts/himalaya-g1/watchdog_state.json -
+```
+
+`watchdog_state.json` holds the CURRENT job id per task (which may be a retry, not
+the id in the table below) plus how many retries each needed. A task showing
+`retries: 2` failed three times and needs a human — do not just relaunch it.
+
+Watchdog job: `6a93a50a984507d9db4ec661`
+
+---
+
 ## Step 1 — what survived the night (2 minutes)
 
 ```bash
@@ -37,6 +56,7 @@ done
 | `6a93a10945686a1580c16dab` | **train-tether** | D — fixed-line ascent |
 | `6a93a31045686a1580c16dff` | **train-getup2** | B — fall recovery, RETRY |
 | `6a939fd8984507d9db4ec5ed` | film-slope | A — incline footage |
+| `6a93a576984507d9db4ec66b` | **train-ice-hifi** | corrected contact model — see below |
 | `6a93a2cc984507d9db4ec641` | cross-eval3 | headline table, RETRY |
 | `6a93a2ce984507d9db4ec643` | estimate-mu3 | layer 1, RETRY |
 
@@ -117,6 +137,20 @@ then republish via the Artifact tool with the **same file path** to keep the URL
 GitHub has **one unpushed commit**. The user asked to hold pushes — **ask first**.
 
 ---
+
+## Step 4.5 — the contact-model correction (read before quoting any ice number)
+
+`train_ice_hifi.py` is retraining with `friction_combine_mode = "min"`.
+
+PhysX combines the two contacting materials, and Isaac Lab defaults to `average`.
+So a foot at mu=0.8 on ice at mu=0.06 was actually experiencing **mu=0.43** — not
+ice. **Every ice result produced before this ran on ground roughly 7x grippier than
+intended**, including the 0-falls-on-snow headline.
+
+Expect the hifi numbers to be WORSE. That is the correct outcome: a policy that
+only worked because the contact model was generous is not a result. Compare
+`ice-slope-hifi/` against `ice-slope/` and quote the hifi numbers if they differ
+materially. Full reasoning and the remaining fidelity gaps are in `SIM_ACCURACY.md`.
 
 ## Step 5 — if there is time left
 
