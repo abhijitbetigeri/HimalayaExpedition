@@ -171,7 +171,7 @@ def steer(pose, target, v_max: float, stop_within: float = 0.25) -> tuple[float,
     return float(v), 0.0, wz
 
 
-def route(pos, target, obstacles, clearance: float = 0.45, memory: dict | None = None):
+def route(pos, target, hazards, clearance: float = 0.45, memory: dict | None = None, teammates=()):
     """Next point to walk to: `target`, or a waypoint that passes the obstacles in the way.
 
     `obstacles` are discs (x, y, r). The ones blocking the straight line are
@@ -185,6 +185,19 @@ def route(pos, target, obstacles, clearance: float = 0.45, memory: dict | None =
     tx, ty = target
     seg = np.array([tx - px, ty - py])
     length = float(np.linalg.norm(seg))
+    # A hazard is never ignored. If the target lies inside one's keep-out zone
+    # (a beacon next to mapped ice), the zone shrinks just enough to leave the
+    # target reachable from the far side. A parked teammate beside the target IS
+    # ignored: dig slots are next to each other by design. An earlier version
+    # applied that teammate rule to hazards too, and since a sweep target is only
+    # 2.5 m ahead, ice dead ahead with the target just behind it was skipped: the
+    # robot backed off a patch and walked straight back in, every six seconds.
+    obstacles = []
+    for hx, hy, hr in hazards:
+        d = math.hypot(hx - tx, hy - ty)
+        obstacles.append((hx, hy, min(hr, max(0.3, d - 0.2)) if d < hr + clearance else hr))
+    n_hard = len(obstacles)
+    obstacles += [o for o in teammates if math.hypot(o[0] - tx, o[1] - ty) > o[2] + clearance]
     if length < 1e-6 or not obstacles:
         return target
     u = seg / length
@@ -195,8 +208,7 @@ def route(pos, target, obstacles, clearance: float = 0.45, memory: dict | None =
         geo.append((float(rel @ u), float(left @ rel), r, (round(ox, 2), round(oy, 2))))
     blocking = [
         k for k, (along, across, r, _key) in enumerate(geo)
-        if -r < along < length - 0.2 and abs(across) < r + clearance
-        and math.hypot(obstacles[k][0] - tx, obstacles[k][1] - ty) > r + clearance  # cannot avoid what the target sits beside
+        if -r < along < length - (0.0 if k < n_hard else 0.2) and abs(across) < r + clearance
     ]  # fmt: skip
     if not blocking:
         return target
@@ -222,7 +234,11 @@ def route(pos, target, obstacles, clearance: float = 0.45, memory: dict | None =
         for k in cluster:
             memory[geo[k][3]] = side
     lateral = go_left if side == "left" else go_right
-    along = max(0.6, min(geo[k][0] for k in cluster))
+    # Step sideways BEFORE the cluster's near edge, not beside its middle. Beside
+    # the middle, a robot that had just backed off ice left on a diagonal that
+    # clipped the same patch: seed 25 fired the reflex six times on one patch,
+    # 20 cm further along each time, and lost two robots doing it.
+    along = max(0.3, min(geo[k][0] - geo[k][2] for k in cluster))
     w = np.array([px, py]) + u * along + left * lateral
     return float(w[0]), float(w[1])
 
@@ -395,7 +411,7 @@ class RobotAgent:
                 self.target = slot
                 return self._keep_station(me, slot), out
             self.role = "converge"
-            self.target = route(pos, slot, self.hazards + self._teammate_discs(t), memory=self.sides)
+            self.target = route(pos, slot, self.hazards, memory=self.sides, teammates=self._teammate_discs(t))
             return self._yield_to_others(t, me, steer(me, self.target, V_SWEEP, stop_within=0.3)), out
 
         # -- sweep --
@@ -405,7 +421,10 @@ class RobotAgent:
             return (0.0, 0.0, 0.0), out
         self.role = "sweep"
         lane_x = self._lane_x(t, me)
-        self.target = route(pos, (lane_x, min(y1, me[1] + 2.5)), self.hazards, memory=self.sides)
+        ahead_y = min(y1, me[1] + 2.5)
+        while ahead_y < y1 and any(math.hypot(lane_x - hx, ahead_y - hy) < hr + 0.45 for hx, hy, hr in self.hazards):
+            ahead_y = min(y1, ahead_y + 0.5)  # aim past mapped ice, never into it
+        self.target = route(pos, (lane_x, ahead_y), self.hazards, memory=self.sides)
         v = V_SWEEP
         if self.coordinated:
             ahead = me[1] - self._line_y(t, me)
