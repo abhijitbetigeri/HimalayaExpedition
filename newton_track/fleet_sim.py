@@ -31,6 +31,7 @@ import newton
 import newton.utils
 from newton import JointTargetMode
 
+from g1_collision import add_body_collisions
 from g1_newton import CONE, DECIMATION, FALL_COS_TILT, FALL_HEIGHT, POLICY_HZ, SIM_HZ, paint_g1
 
 wp.config.quiet = True
@@ -106,6 +107,7 @@ class FleetSim:
         snow_mu: float = SNOW_MU,
         ice_mu: float = ICE_MU,
         seed: int = 0,
+        body_collisions: bool = True,
     ):
         self.n = len(starts)
         self.patches = list(patches)
@@ -139,6 +141,9 @@ class FleetSim:
         )
         robot.approximate_meshes("convex_hull")
         paint_g1(robot, asset_dir)
+        if body_collisions:
+            # The USD collides at the soles and the torso only. See g1_collision.py.
+            add_body_collisions(robot)
         for i in range(nj):
             robot.joint_target_ke[i + 6] = cfg["mjw_joint_stiffness"][i]
             robot.joint_target_kd[i + 6] = cfg["mjw_joint_damping"][i]
@@ -172,13 +177,17 @@ class FleetSim:
 
         self.model = builder.finalize()
         self.model.set_gravity((0.0, 0.0, -9.81))
+        # A robot lying on 33 shapes can make far more contacts than one standing on
+        # two soles: up to 80 against flat ground, at 3 rows each plus joint limits.
+        # Measured peak with four down is 47 contacts and 153 rows in total.
+        ncon, nrow = (80, 320) if body_collisions else (30, 160)
         self.solver = newton.solvers.SolverMuJoCo(
             self.model,
             use_mujoco_cpu=True,
             solver="newton",
             cone=CONE,
-            nconmax=30 * self.n,
-            njmax=160 * self.n,
+            nconmax=ncon * self.n,
+            njmax=nrow * self.n,
         )
         self.state_0 = self.model.state()
         self.state_1 = self.model.state()
