@@ -160,6 +160,8 @@ class RepeatingAgent(RobotAgent):
     own FOUND is ignored, and of two competing FOUNDs the lower id wins.
     """
 
+    relay = False  # the study's candidates are measured against the agent as it was at 928f08f, before relaying
+
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
         self.fell_at = None
@@ -226,6 +228,8 @@ class _LongRoster:
 
 class LongMemoryAgent(_LongRoster, RobotAgent):
     """The stock agent with the longer roster memory and nothing else: the smallest candidate."""
+
+    relay = False
 
 
 class PatientAgent(_LongRoster, RepeatingAgent):

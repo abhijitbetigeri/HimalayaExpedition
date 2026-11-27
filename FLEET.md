@@ -37,7 +37,7 @@ they all apply the same deterministic rule to the same shared roster.
 
 | message | meaning |
 |---|---|
-| `POSE` | heartbeat at 5 Hz: who I am, where, what I am doing, which dig slot I claim |
+| `POSE` | heartbeat at 5 Hz: who I am, where, what I am doing, which dig slot I claim, and what I know of the team, the ice and the beacon, so news crosses more than one hop |
 | `DOWN` | I fell, here |
 | `HAZARD` | there is ice here |
 | `SIGNAL` | my transceiver reads the beacon: estimated position and range |
@@ -162,8 +162,13 @@ other two sets are shown so the gap between tuned-on and untouched is visible.
 - **The debug sets score about the same as the held-out set** (20/20 and 19/20
   assembled), which is some evidence the final planner is not fitted to them.
   It is not proof: three planner versions were thrown away on these seeds.
-- **One unexplained failure**: seed 30, radio and reflex on, nobody lost, beacon
-  never located in 72.5 s. Not traced.
+- **Seed 30 is a hole in the sweep, and it is a class, not a one-off.** Radio
+  and reflex on, nobody lost, beacon never located. One robot fell behind after
+  two reflex stops, the other three re-split the field into lanes 4 m apart,
+  which is exactly twice the 2 m transceiver range, and the beacon sat on the
+  seam, 2.19 m from the nearest robot. The straggler walked straight up a
+  neighbour's strip. All four parked at the top and the mission ended at 72.5 s
+  with 27.5 s unused. See "Relaying, and the hole in the sweep" below.
 
 ## How much radio, and how many robots
 
@@ -235,8 +240,10 @@ Candidate agent changes, same seeds and radio:
   radio. "Sweep time in the wrong lane" tracks this: 0 %, 2 %, 47 %, 88 %.
 - **A dropped FOUND broke nothing.** It was missed by a teammate in almost every
   lossy mission, and SIGNAL covers for it.
-- **A 3 m range fails for a different reason: nothing is relayed.** Two robots
-  out of earshot never hear SIGNAL or FOUND and park at the top of the field.
+- **A 3 m range fails for a different reason**: two robots out of earshot never
+  hear SIGNAL or FOUND and park at the top of the field. The study put this down
+  to nothing being relayed. Relaying has since been built and does not fix it
+  (next section): those robots have no radio path at all.
 - **Dig-slot claims do conflict under heavy loss** (two helpers claiming the same
   or neighbouring position for over a second in 7 of 12 missions at 80 % loss
   and in every mission that reached the dig at 95 %). No assembly was lost to it.
@@ -247,9 +254,12 @@ Candidate agent changes, same seeds and radio:
   a 3 m range needs (5/12 to 11/12) and is a bigger edit. `+steady` has the best
   lanes at 95 % but changes behaviour on a clean radio, so it was not taken.
   **The `+memory` change is now in `fleet_search.py`.** The tables above are from
-  the commit before it. On the current code the unmodified agent reproduces the
+  the commit before it. At commit ab9f1c3 the unmodified agent reproduced the
   `+memory` cells mission for mission at 80 % and 95 % loss (12 of 12 each), and
-  all twenty clean-radio held-out missions are identical to before.
+  all twenty clean-radio held-out missions were identical to before. The agent
+  has relayed since then, so under packet loss it no longer matches those cells
+  mission for mission; the totals are the same (next section). The study's
+  candidate agents set `relay = False` and still measure what they measured.
 
 **Team size.**
 
@@ -269,6 +279,90 @@ open: one residual repeat on a mapped patch that ended with two robots down
 (loss 0.8 seed 49, 1 mission in 204); and every robot lost on a clean radio in
 these studies went down during the reflex's own back-out, one of them more than
 0.6 m outside any patch.
+
+## Relaying, and the hole in the sweep
+
+Two follow-ups to the studies above, each run by its own agent on a frozen copy
+of commit ab9f1c3 and scored once on seeds nobody had used. Rows are in
+`results/fleet_relay.json`.
+
+**Relaying.** The 5 Hz heartbeat now also carries what its sender knows: every
+teammate in its roster with the age of that entry, robots known to be down,
+mapped ice, the best beacon signal, and the burial point. A receiver back-dates
+each relayed position by its age, so one that crossed two robots is exactly as
+old as it is and never beats a newer one heard directly, and nothing circulates
+past ten seconds. A fallen robot keeps a heartbeat. `RobotAgent.relay = False`
+is the agent as it was.
+
+Four robots, reflex on, coordinated, seeds 80-99, n = 20 per cell, paired.
+"Before" is ab9f1c3.
+
+| Radio range | | Located | Assembled | Robots lost per mission | Median s to assemble | Messages per mission |
+|---|---|---|---|---|---|---|
+| 3 m | before | 20/20 | 15/20 | 0.35 | 31.1 | 1914 |
+| 3 m | after | 19/20 | 16/20 | 0.10 | 37.0 | 1831 |
+| 5 m | before | 20/20 | 20/20 | 0.10 | 41.0 | 1781 |
+| 5 m | after | 20/20 | 20/20 | 0.05 | 40.8 | 1497 |
+| unlimited | before | 20/20 | 20/20 | 0.05 | 42.2 | 1493 |
+| unlimited | after | 20/20 | 20/20 | 0.05 | 42.2 | 1502 |
+
+- **Relaying does not fix a 3 m radio.** Assembled 15/20 to 16/20: gained on
+  seeds 87 and 89, lost on seed 80, sign test p = 1.0. Robots lost fell from 7
+  to 2 over twenty missions (fewer on five seeds, more on one, p = 0.22), which
+  is suggestive and no more.
+- **It does deliver what the radio can carry.** At 3 m a robot without the news
+  that was in radio contact with one that had it waited 4.3 s per mission
+  before and 0.2 s after, and sweep time in the wrong lane fell from 81 % to
+  29 %.
+- **What is left has no radio path.** Lanes are 3 m apart and the radio reaches
+  3 m, so the whole line is connected for only 44 % of the sweep, and time spent
+  uninformed and cut off did not move (24.8 s to 23.1 s). Of the four missions
+  that still fail at 3 m, two split two and two after an ice back-off and two
+  robots park at the top 4.5 to 6 m from the beacon (seeds 80, 81); in one every
+  robot forgets the others, takes the whole field as its lane, and a beacon near
+  the left edge is never swept (seed 91); in one a helper kept a dig slot it had
+  claimed from the far side and walked through the robot standing on the beacon
+  (seed 93, a planner fault: `keep_out_discs` ignores a parked teammate within
+  0.9 m of the target).
+- **The 5/12 at 3 m in the radio study is from commit 928f08f.** After the
+  roster-memory change the unmodified agent already assembled 9/12 on those
+  seeds and 15/20 on these.
+- **A clean radio is untouched.** On seeds 60-79 all twenty missions are
+  identical before and after. The only difference is the message count on seed
+  70, where the fallen robot now keeps a heartbeat.
+- **Under packet loss it changes individual missions and no totals.** Seeds
+  40-51, n = 12: at 80 % loss located 12/12 and assembled 12/12 before and
+  after; at 95 % loss located 12/12 and assembled 11/12 before and after (seed
+  40 gained, seed 46 lost), robots lost 4 before and 2 after.
+- **The price is bytes, not messages.** A heartbeat grows from 86 to about 300
+  to 340 bytes as JSON text, an upper bound on a packed format.
+- **What got worse at 3 m**: located 20/20 to 19/20 (seed 91), three seconds
+  slower to assemble on the fourteen seeds where both arms assembled, and
+  dig-slot conflicts of over a second in 3 of 20 missions against none.
+
+**The hole in the sweep.** Tracing seed 30 (above) showed the sweep can leave
+ground no robot came within 2 m of, and that the team then parks.
+
+- **Thin lines leave seams.** Three lanes on a 12 m field are 4 m apart, twice
+  the transceiver range with no overlap. Two lanes are 6 m apart and x 5 to 7 is
+  never searched, a fifth of where a beacon can be.
+- **How often.** With the beacon moved out of reach, reflex on, 11 of 40
+  layouts (seeds 20-39 and 120-139) leave some beacon-eligible ground
+  unsearched: 1.0 % of it on average, 12.9 % at worst (seed 135, two robots
+  down).
+- **Which failures it explains.** Coordinated missions where the beacon was not
+  located: seed 30 (reflex on, nobody lost), seed 79 (reflex off, two lost,
+  beacon at x 5.27 between lanes 3 and 9), and seed 135 (reflex on, two lost
+  during the reflex's back-out). Each parked with 27 to 60 s unused. The
+  unlocated missions with the radio off are a different thing: a robot fell in
+  the beacon's lane and nobody takes a lost lane.
+- **A narrow fix was tried and not taken.** A straggler that follows the
+  nearest seam between lanes instead of walking straight ahead fixes seed 30,
+  on which it was designed, and changes no outcome on twenty fresh seeds
+  (120-139: located 19/20 and assembled 19/20 before and after). Mean unsearched
+  ground went from 1.19 % to 1.03 % while layouts with a hole went from 5 to 7.
+- **Not fixed.** Nothing happens after the first pass. A second pass over the
+  missed ground with the unused time is the open piece of work.
 
 ## What went wrong on the way, and what it taught
 
@@ -321,7 +415,9 @@ Other things the missions exposed:
   transceiver with clean range and bearing inside 2 m and nothing outside it.
 - **The radio is perfect** in the main tables. With the roster-memory fix the
   team locates 12/12 and assembles 11/12 at 95 % packet loss, on twelve seeds. A
-  3 m radio range still fails: nothing is relayed.
+  3 m radio range still fails one mission in five (16/20), with relaying on.
+- **The sweep is not complete.** About one layout in four leaves some ground
+  no robot came within 2 m of, and the team does not go back for it.
 - **No robot gets up.** Every loss is permanent.
 - **One field size, one ice density.** Team size was varied from three to six
   on the same field only.

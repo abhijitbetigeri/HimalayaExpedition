@@ -16,7 +16,8 @@ central planner: agents agree on lanes and dig positions because they all apply
 the same deterministic rule to the same shared roster. What they share goes
 over `Bus`, a broadcast channel with a fixed message vocabulary:
 
-  POSE     heartbeat, 5 Hz: who I am, where I am, what I am doing
+  POSE     heartbeat, 5 Hz: who I am, where I am, what I am doing, and what I
+           know of the team and the mission, so news crosses more than one hop
   DOWN     I fell, here
   HAZARD   there is ice here (from a fall, or from the slip reflex if enabled)
   SIGNAL   my transceiver reads the beacon: estimated position and range
@@ -323,7 +324,35 @@ STRAGGLER_GAP = 3.0  # a sweeper this far behind the front is not holding a lane
 
 
 class RobotAgent:
-    """One robot's decision-making. Sees only its own sensors and its inbox."""
+    """One robot's decision-making. Sees only its own sensors and its inbox.
+
+    Relaying. A radio that reaches 3 m does not reach across a 12 m line, and
+    the rule "everyone applies the same rule to the same roster" needs the same
+    roster. So the heartbeat also carries what its sender knows (`_news`), and
+    whoever hears it merges that in (`_merge_news`):
+
+      team     every teammate the sender has in its roster, with the AGE of that
+               entry. A receiver back-dates it, so a position that came through
+               two robots is exactly as old as it is and never beats a newer one
+               heard directly. Entries die at ROSTER_AFTER wherever they are, so
+               nothing circulates for longer than that.
+      lost     ids known to be down. A set that only grows.
+      hazards  mapped ice. `_add_hazard` already drops anything within 0.6 m of
+               a hazard it has, so repeats cost nothing.
+      sig      the best beacon signal the sender holds, with who measured it.
+               Shorter range wins, as for SIGNAL, so an old one cannot displace
+               a better one.
+      found    the burial point and who pinpointed it.
+
+    A fallen robot keeps a heartbeat going with role "down" and the place it
+    fell: its one DOWN reaches nobody if nobody is in range at that moment.
+
+    Everything relayed is something a robot in range would already have heard
+    first-hand, so on a radio that reaches everyone the merge changes nothing.
+    `relay = False` is the agent as it was before.
+    """
+
+    relay = True
 
     def __init__(self, rid: int, n: int, start_x: float, coordinated: bool):
         self.id, self.n, self.coordinated = rid, n, coordinated
@@ -340,6 +369,8 @@ class RobotAgent:
         self.slot = None  # index of the dig position this robot has claimed
         self.sides = {}  # route() memory: the waypoint this robot is committed to
         self.yield_ticks = 0
+        self.said = math.inf  # the shortest beacon range I have ever broadcast as my own
+        self.fell_at = None  # where I went down
 
     # ---- shared rules: every agent computes these from the same roster ----
 
@@ -374,6 +405,8 @@ class RobotAgent:
             return me[1]  # a straggler does not slow down for anyone
         heard = self._heard(t)
         # Remember a quiet teammate, but only keep pace with positions that are fresh.
+        # A relayed position carries its true age (`_merge_news`), so one that
+        # crossed two robots has that much less of its 1.5 s left.
         ys = [me[1]] + [heard[r]["y"] for r in order if r != self.id and t - heard[r]["t"] <= LOST_AFTER]
         return float(np.mean(ys))
 
@@ -418,10 +451,14 @@ class RobotAgent:
         """Returns (command, outbox)."""
         out = []
         me = pose
+        news = []
         for m in inbox:
             src = m["from"]
             if m["type"] == "POSE":
                 self.roster[src] = {"x": m["x"], "y": m["y"], "role": m["role"], "slot": m.get("slot"), "t": t}
+                if m["role"] == "down":
+                    self.lost.add(src)
+                news.append(m)
             elif m["type"] == "DOWN":
                 self.lost.add(src)
             elif m["type"] == "HAZARD":
@@ -432,13 +469,20 @@ class RobotAgent:
             elif m["type"] == "FOUND":
                 self.found = (m["x"], m["y"])
                 self.best_signal = (0.0, self.found, src)
+        if self.relay:
+            for m in news:  # after everything first-hand: second-hand news never overrides what I heard myself this tick
+                self._merge_news(t, m)
 
+        beat = t % HEARTBEAT == self.id % HEARTBEAT
         if down:
             if self.role != "down":
                 self.role = "down"
+                self.fell_at = (me[0], me[1])
                 out.append({"type": "DOWN", "x": me[0], "y": me[1]})
                 out.append({"type": "HAZARD", "x": me[0], "y": me[1]})
                 self._add_hazard(me[0], me[1])
+            elif beat and self.relay:
+                out.append({"type": "POSE", "x": me[0], "y": me[1], "role": "down", "slot": None, "hazards": [self.fell_at]})
             self.target = None
             return (0.0, 0.0, 0.0), out
 
@@ -456,10 +500,14 @@ class RobotAgent:
             rng_meas, est = reading
             if self.best_signal is None or rng_meas < self.best_signal[0] - 0.05 or self.best_signal[2] == self.id:
                 self.best_signal = (rng_meas, est, self.id)
+                self.said = min(self.said, rng_meas)
                 out.append({"type": "SIGNAL", "x": est[0], "y": est[1], "range": rng_meas})
 
-        if t % HEARTBEAT == self.id % HEARTBEAT:
-            out.append({"type": "POSE", "x": me[0], "y": me[1], "role": self.role, "slot": self.slot})
+        if beat:
+            pose_msg = {"type": "POSE", "x": me[0], "y": me[1], "role": self.role, "slot": self.slot}
+            if self.relay:
+                pose_msg.update(self._news(t))
+            out.append(pose_msg)
 
         _x0, _x1, _y0, y1 = FIELD
         pos = (me[0], me[1])
@@ -508,6 +556,56 @@ class RobotAgent:
             ahead = me[1] - self._line_y(t, me)
             v = float(np.clip(V_SWEEP - 0.6 * ahead, 0.15, V_SWEEP))
         return self._yield_to_others(t, me, self._go(me, (lane_x, ahead_y), v, 0.25)), out
+
+    # ---- relaying: what rides on the heartbeat, and what is done with it ----
+
+    def _news(self, t: int) -> dict:
+        """What I know that a teammate out of earshot of the source may not.
+
+        `age` is ticks since the robot it describes said it, counting one tick
+        of radio latency per hop, so that after any number of hops a receiver
+        dates the entry to the tick it would have heard it first-hand.
+        """
+        news = {
+            "team": [(r, i["x"], i["y"], i["role"], i.get("slot"), t - i["t"] + 1) for r, i in self._heard(t).items()],
+            "lost": sorted(self.lost),
+            "hazards": [(hx, hy) for hx, hy, _ in self.hazards],
+        }
+        if self.found is not None:
+            news["found"] = (self.found[0], self.found[1], self.best_signal[2])
+        elif self.best_signal is not None:
+            rng_meas, est, who = self.best_signal
+            news["sig"] = (rng_meas, est[0], est[1], who)
+        return news
+
+    def _merge_news(self, t: int, m: dict):
+        for r, x, y, role, slot, age in m.get("team", ()):
+            seen = t - age  # the tick I would have heard this myself, had I been in range
+            if r == self.id or t - seen > ROSTER_AFTER:
+                continue
+            if r not in self.roster or self.roster[r]["t"] < seen:  # strictly newer only: an echo of what I have changes nothing
+                self.roster[r] = {"x": x, "y": y, "role": role, "slot": slot, "t": seen}
+        self.lost.update(r for r in m.get("lost", ()) if r != self.id)
+        for hx, hy in m.get("hazards", ()):
+            self._add_hazard(hx, hy)
+        if self.found is not None:
+            return  # pinpointed: nothing second-hand improves on that
+        found = m.get("found")
+        if found is not None and found[2] != self.id:
+            self.found = (found[0], found[1])
+            self.best_signal = (0.0, self.found, found[2])
+            return
+        sig = m.get("sig")
+        if sig is not None and sig[3] != self.id:
+            # A relayed signal is old. If I am the one pinpointing, my teammates
+            # may still hold the shortest range I ever announced, so that is
+            # what it has to beat, not my latest reading: readings rise with
+            # noise, and an old signal that beat a noisy one would send me off
+            # to a dig slot while everyone else still waits for me.
+            mine = self.best_signal
+            bar = math.inf if mine is None else min(mine[0], self.said) if mine[2] == self.id else mine[0]
+            if sig[0] < bar - 0.05:
+                self.best_signal = (sig[0], (sig[1], sig[2]), sig[3])
 
     def _go(self, me, goal, v_max: float, stop_within: float, teammates=()):
         """Command toward `goal` round whatever is mapped in between.

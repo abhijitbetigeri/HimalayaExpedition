@@ -1,0 +1,898 @@
+{
+ "what": "Relaying on the heartbeat (RobotAgent.relay). before = commit ab9f1c3, after = the same with relay.diff. Four robots, reflex on, coordinated, paired seeds.",
+ "final_seeds_80_99": {
+  "before": "final_base.jsonl",
+  "after": "final_relay.jsonl",
+  "cells": {
+   "r3": {
+    "before": {
+     "n": 20,
+     "seeds": [
+      80,
+      99
+     ],
+     "located": 20,
+     "assembled": 15,
+     "robots_lost_mean": 0.35,
+     "robots_lost_total": 7,
+     "t_located_median_s": 27.2,
+     "t_assembled_median_s": 31.1,
+     "messages_mean": 1914,
+     "messages_per_s": 42.2,
+     "bytes_mean": 167702,
+     "bytes_per_s": 3698,
+     "pose_bytes_each": 86,
+     "duration_mean_s": 45.4,
+     "lane_wrong_frac": 0.807,
+     "line_connected_frac": 0.425,
+     "uninformed_connected_s_mean": 4.3,
+     "uninformed_cut_off_s_mean": 24.8,
+     "no_pinpointer_s_mean": 0.0,
+     "ice_events_mean": 1.95,
+     "not_assembled": [
+      81,
+      87,
+      89,
+      91,
+      93
+     ]
+    },
+    "after": {
+     "n": 20,
+     "seeds": [
+      80,
+      99
+     ],
+     "located": 19,
+     "assembled": 16,
+     "robots_lost_mean": 0.1,
+     "robots_lost_total": 2,
+     "t_located_median_s": 26.6,
+     "t_assembled_median_s": 37.0,
+     "messages_mean": 1831,
+     "messages_per_s": 39.8,
+     "bytes_mean": 351852,
+     "bytes_per_s": 7656,
+     "pose_bytes_each": 295,
+     "duration_mean_s": 46.0,
+     "lane_wrong_frac": 0.289,
+     "line_connected_frac": 0.436,
+     "uninformed_connected_s_mean": 0.2,
+     "uninformed_cut_off_s_mean": 23.1,
+     "no_pinpointer_s_mean": 0.0,
+     "ice_events_mean": 1.95,
+     "not_assembled": [
+      80,
+      81,
+      91,
+      93
+     ]
+    },
+    "paired": {
+     "pairs": 20,
+     "assembly_gained": [
+      87,
+      89
+     ],
+     "assembly_lost": [
+      80
+     ],
+     "more_robots_lost": [
+      94
+     ],
+     "fewer_robots_lost": [
+      80,
+      81,
+      87,
+      89,
+      93
+     ],
+     "locate_gained": [],
+     "locate_lost": [
+      91
+     ],
+     "identical_missions": 0,
+     "differing_seeds": [
+      80,
+      81,
+      82,
+      83,
+      84,
+      85,
+      86,
+      87,
+      88,
+      89,
+      90,
+      91,
+      92,
+      93,
+      94,
+      95,
+      96,
+      97,
+      98,
+      99
+     ],
+     "t_assembled_diff_median_s_both": 3.0,
+     "both_assembled": 14
+    }
+   },
+   "r5": {
+    "before": {
+     "n": 20,
+     "seeds": [
+      80,
+      99
+     ],
+     "located": 20,
+     "assembled": 20,
+     "robots_lost_mean": 0.1,
+     "robots_lost_total": 2,
+     "t_located_median_s": 31.4,
+     "t_assembled_median_s": 41.0,
+     "messages_mean": 1781,
+     "messages_per_s": 39.4,
+     "bytes_mean": 155740,
+     "bytes_per_s": 3448,
+     "pose_bytes_each": 86,
+     "duration_mean_s": 45.2,
+     "lane_wrong_frac": 0.551,
+     "line_connected_frac": 0.953,
+     "uninformed_connected_s_mean": 7.7,
+     "uninformed_cut_off_s_mean": 5.2,
+     "no_pinpointer_s_mean": 0.0,
+     "ice_events_mean": 2.15,
+     "not_assembled": []
+    },
+    "after": {
+     "n": 20,
+     "seeds": [
+      80,
+      99
+     ],
+     "located": 20,
+     "assembled": 20,
+     "robots_lost_mean": 0.05,
+     "robots_lost_total": 1,
+     "t_located_median_s": 34.5,
+     "t_assembled_median_s": 40.8,
+     "messages_mean": 1497,
+     "messages_per_s": 35.3,
+     "bytes_mean": 347409,
+     "bytes_per_s": 8191,
+     "pose_bytes_each": 341,
+     "duration_mean_s": 42.4,
+     "lane_wrong_frac": 0.032,
+     "line_connected_frac": 0.919,
+     "uninformed_connected_s_mean": 0.2,
+     "uninformed_cut_off_s_mean": 2.1,
+     "no_pinpointer_s_mean": 0.0,
+     "ice_events_mean": 1.65,
+     "not_assembled": []
+    },
+    "paired": {
+     "pairs": 20,
+     "assembly_gained": [],
+     "assembly_lost": [],
+     "more_robots_lost": [
+      86
+     ],
+     "fewer_robots_lost": [
+      88,
+      92
+     ],
+     "locate_gained": [],
+     "locate_lost": [],
+     "identical_missions": 0,
+     "differing_seeds": [
+      80,
+      81,
+      82,
+      83,
+      84,
+      85,
+      86,
+      87,
+      88,
+      89,
+      90,
+      91,
+      92,
+      93,
+      94,
+      95,
+      96,
+      97,
+      98,
+      99
+     ],
+     "t_assembled_diff_median_s_both": 0.2,
+     "both_assembled": 20
+    }
+   },
+   "inf": {
+    "before": {
+     "n": 20,
+     "seeds": [
+      80,
+      99
+     ],
+     "located": 20,
+     "assembled": 20,
+     "robots_lost_mean": 0.05,
+     "robots_lost_total": 1,
+     "t_located_median_s": 33.0,
+     "t_assembled_median_s": 42.2,
+     "messages_mean": 1493,
+     "messages_per_s": 35.6,
+     "bytes_mean": 130590,
+     "bytes_per_s": 3113,
+     "pose_bytes_each": 87,
+     "duration_mean_s": 41.9,
+     "lane_wrong_frac": 0.001,
+     "line_connected_frac": 1.0,
+     "uninformed_connected_s_mean": 0.1,
+     "uninformed_cut_off_s_mean": 0.0,
+     "no_pinpointer_s_mean": 0.0,
+     "ice_events_mean": 1.7,
+     "not_assembled": []
+    },
+    "after": {
+     "n": 20,
+     "seeds": [
+      80,
+      99
+     ],
+     "located": 20,
+     "assembled": 20,
+     "robots_lost_mean": 0.05,
+     "robots_lost_total": 1,
+     "t_located_median_s": 33.0,
+     "t_assembled_median_s": 42.2,
+     "messages_mean": 1502,
+     "messages_per_s": 35.8,
+     "bytes_mean": 346164,
+     "bytes_per_s": 8253,
+     "pose_bytes_each": 342,
+     "duration_mean_s": 41.9,
+     "lane_wrong_frac": 0.001,
+     "line_connected_frac": 1.0,
+     "uninformed_connected_s_mean": 0.1,
+     "uninformed_cut_off_s_mean": 0.0,
+     "no_pinpointer_s_mean": 0.0,
+     "ice_events_mean": 1.7,
+     "not_assembled": []
+    },
+    "paired": {
+     "pairs": 20,
+     "assembly_gained": [],
+     "assembly_lost": [],
+     "more_robots_lost": [],
+     "fewer_robots_lost": [],
+     "locate_gained": [],
+     "locate_lost": [],
+     "identical_missions": 20,
+     "differing_seeds": [],
+     "t_assembled_diff_median_s_both": 0.0,
+     "both_assembled": 20
+    }
+   }
+  }
+ },
+ "regression_seeds_60_79": {
+  "before": "reg_base.jsonl",
+  "after": "reg_relay.jsonl",
+  "cells": {
+   "inf": {
+    "before": {
+     "n": 20,
+     "seeds": [
+      60,
+      79
+     ],
+     "located": 20,
+     "assembled": 20,
+     "robots_lost_mean": 0.05,
+     "robots_lost_total": 1,
+     "t_located_median_s": 37.0,
+     "t_assembled_median_s": 47.3,
+     "messages_mean": 1538,
+     "messages_per_s": 35.7,
+     "bytes_mean": 134745,
+     "bytes_per_s": 3124,
+     "pose_bytes_each": 87,
+     "duration_mean_s": 43.1,
+     "lane_wrong_frac": 0.001,
+     "line_connected_frac": 1.0,
+     "uninformed_connected_s_mean": 0.1,
+     "uninformed_cut_off_s_mean": 0.0,
+     "no_pinpointer_s_mean": 0.0,
+     "ice_events_mean": 1.9,
+     "not_assembled": []
+    },
+    "after": {
+     "n": 20,
+     "seeds": [
+      60,
+      79
+     ],
+     "located": 20,
+     "assembled": 20,
+     "robots_lost_mean": 0.05,
+     "robots_lost_total": 1,
+     "t_located_median_s": 37.0,
+     "t_assembled_median_s": 47.3,
+     "messages_mean": 1544,
+     "messages_per_s": 35.8,
+     "bytes_mean": 358561,
+     "bytes_per_s": 8313,
+     "pose_bytes_each": 345,
+     "duration_mean_s": 43.1,
+     "lane_wrong_frac": 0.001,
+     "line_connected_frac": 1.0,
+     "uninformed_connected_s_mean": 0.1,
+     "uninformed_cut_off_s_mean": 0.0,
+     "no_pinpointer_s_mean": 0.0,
+     "ice_events_mean": 1.9,
+     "not_assembled": []
+    },
+    "paired": {
+     "pairs": 20,
+     "assembly_gained": [],
+     "assembly_lost": [],
+     "more_robots_lost": [],
+     "fewer_robots_lost": [],
+     "locate_gained": [],
+     "locate_lost": [],
+     "identical_missions": 20,
+     "differing_seeds": [],
+     "t_assembled_diff_median_s_both": 0.0,
+     "both_assembled": 20
+    }
+   }
+  }
+ },
+ "packet_loss_seeds_40_51": {
+  "loss 0.8": {
+   "before": [
+    {
+     "seed": 40,
+     "located": true,
+     "t_located_s": 17.9,
+     "assembled": true,
+     "t_assembled_s": 27.3,
+     "robots_lost": 0,
+     "coverage": 0.464,
+     "messages": 1262,
+     "duration_s": 27.3
+    },
+    {
+     "seed": 41,
+     "located": true,
+     "t_located_s": 19.0,
+     "assembled": true,
+     "t_assembled_s": 21.4,
+     "robots_lost": 0,
+     "coverage": 0.482,
+     "messages": 790,
+     "duration_s": 21.4
+    },
+    {
+     "seed": 42,
+     "located": true,
+     "t_located_s": 21.0,
+     "assembled": true,
+     "t_assembled_s": 28.6,
+     "robots_lost": 0,
+     "coverage": 0.531,
+     "messages": 1207,
+     "duration_s": 28.6
+    },
+    {
+     "seed": 43,
+     "located": true,
+     "t_located_s": 19.0,
+     "assembled": true,
+     "t_assembled_s": 23.5,
+     "robots_lost": 0,
+     "coverage": 0.473,
+     "messages": 939,
+     "duration_s": 23.5
+    },
+    {
+     "seed": 44,
+     "located": true,
+     "t_located_s": 19.5,
+     "assembled": true,
+     "t_assembled_s": 28.0,
+     "robots_lost": 0,
+     "coverage": 0.536,
+     "messages": 1229,
+     "duration_s": 28.0
+    },
+    {
+     "seed": 45,
+     "located": true,
+     "t_located_s": 59.2,
+     "assembled": true,
+     "t_assembled_s": 67.8,
+     "robots_lost": 0,
+     "coverage": 0.982,
+     "messages": 2040,
+     "duration_s": 67.8
+    },
+    {
+     "seed": 46,
+     "located": true,
+     "t_located_s": 42.4,
+     "assembled": true,
+     "t_assembled_s": 47.6,
+     "robots_lost": 0,
+     "coverage": 0.839,
+     "messages": 1461,
+     "duration_s": 47.6
+    },
+    {
+     "seed": 47,
+     "located": true,
+     "t_located_s": 18.6,
+     "assembled": true,
+     "t_assembled_s": 26.9,
+     "robots_lost": 0,
+     "coverage": 0.501,
+     "messages": 1202,
+     "duration_s": 26.9
+    },
+    {
+     "seed": 48,
+     "located": true,
+     "t_located_s": 47.8,
+     "assembled": true,
+     "t_assembled_s": 56.6,
+     "robots_lost": 0,
+     "coverage": 0.879,
+     "messages": 1805,
+     "duration_s": 56.6
+    },
+    {
+     "seed": 49,
+     "located": true,
+     "t_located_s": 41.3,
+     "assembled": true,
+     "t_assembled_s": 90.7,
+     "robots_lost": 1,
+     "coverage": 0.987,
+     "messages": 4364,
+     "duration_s": 90.7
+    },
+    {
+     "seed": 50,
+     "located": true,
+     "t_located_s": 16.8,
+     "assembled": true,
+     "t_assembled_s": 19.6,
+     "robots_lost": 0,
+     "coverage": 0.402,
+     "messages": 777,
+     "duration_s": 19.6
+    },
+    {
+     "seed": 51,
+     "located": true,
+     "t_located_s": 42.7,
+     "assembled": true,
+     "t_assembled_s": 53.8,
+     "robots_lost": 0,
+     "coverage": 0.887,
+     "messages": 1872,
+     "duration_s": 53.8
+    }
+   ],
+   "after": [
+    {
+     "seed": 40,
+     "located": true,
+     "t_located_s": 17.6,
+     "assembled": true,
+     "t_assembled_s": 27.0,
+     "robots_lost": 0,
+     "coverage": 0.454,
+     "messages": 1254,
+     "duration_s": 27.0
+    },
+    {
+     "seed": 41,
+     "located": true,
+     "t_located_s": 19.0,
+     "assembled": true,
+     "t_assembled_s": 21.3,
+     "robots_lost": 0,
+     "coverage": 0.482,
+     "messages": 795,
+     "duration_s": 21.3
+    },
+    {
+     "seed": 42,
+     "located": true,
+     "t_located_s": 20.8,
+     "assembled": true,
+     "t_assembled_s": 28.5,
+     "robots_lost": 0,
+     "coverage": 0.528,
+     "messages": 1202,
+     "duration_s": 28.5
+    },
+    {
+     "seed": 43,
+     "located": true,
+     "t_located_s": 18.9,
+     "assembled": true,
+     "t_assembled_s": 23.0,
+     "robots_lost": 0,
+     "coverage": 0.47,
+     "messages": 906,
+     "duration_s": 23.0
+    },
+    {
+     "seed": 44,
+     "located": true,
+     "t_located_s": 19.5,
+     "assembled": true,
+     "t_assembled_s": 27.8,
+     "robots_lost": 1,
+     "coverage": 0.509,
+     "messages": 1222,
+     "duration_s": 27.8
+    },
+    {
+     "seed": 45,
+     "located": true,
+     "t_located_s": 60.1,
+     "assembled": true,
+     "t_assembled_s": 69.4,
+     "robots_lost": 0,
+     "coverage": 0.975,
+     "messages": 2098,
+     "duration_s": 69.4
+    },
+    {
+     "seed": 46,
+     "located": true,
+     "t_located_s": 35.4,
+     "assembled": true,
+     "t_assembled_s": 70.5,
+     "robots_lost": 1,
+     "coverage": 0.86,
+     "messages": 3420,
+     "duration_s": 70.5
+    },
+    {
+     "seed": 47,
+     "located": true,
+     "t_located_s": 18.5,
+     "assembled": true,
+     "t_assembled_s": 27.1,
+     "robots_lost": 0,
+     "coverage": 0.501,
+     "messages": 1213,
+     "duration_s": 27.1
+    },
+    {
+     "seed": 48,
+     "located": true,
+     "t_located_s": 50.0,
+     "assembled": true,
+     "t_assembled_s": 58.5,
+     "robots_lost": 0,
+     "coverage": 0.875,
+     "messages": 1839,
+     "duration_s": 58.5
+    },
+    {
+     "seed": 49,
+     "located": true,
+     "t_located_s": 42.9,
+     "assembled": true,
+     "t_assembled_s": 51.1,
+     "robots_lost": 0,
+     "coverage": 0.897,
+     "messages": 1679,
+     "duration_s": 51.1
+    },
+    {
+     "seed": 50,
+     "located": true,
+     "t_located_s": 17.0,
+     "assembled": true,
+     "t_assembled_s": 19.9,
+     "robots_lost": 0,
+     "coverage": 0.4,
+     "messages": 792,
+     "duration_s": 19.9
+    },
+    {
+     "seed": 51,
+     "located": true,
+     "t_located_s": 42.3,
+     "assembled": true,
+     "t_assembled_s": 53.4,
+     "robots_lost": 0,
+     "coverage": 0.881,
+     "messages": 1864,
+     "duration_s": 53.4
+    }
+   ]
+  },
+  "loss 0.95": {
+   "before": [
+    {
+     "seed": 40,
+     "located": true,
+     "t_located_s": 17.1,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 2,
+     "coverage": 0.458,
+     "messages": 1693,
+     "duration_s": 33.3
+    },
+    {
+     "seed": 41,
+     "located": true,
+     "t_located_s": 19.0,
+     "assembled": true,
+     "t_assembled_s": 21.4,
+     "robots_lost": 0,
+     "coverage": 0.481,
+     "messages": 792,
+     "duration_s": 21.4
+    },
+    {
+     "seed": 42,
+     "located": true,
+     "t_located_s": 20.0,
+     "assembled": true,
+     "t_assembled_s": 30.4,
+     "robots_lost": 0,
+     "coverage": 0.549,
+     "messages": 1366,
+     "duration_s": 30.4
+    },
+    {
+     "seed": 43,
+     "located": true,
+     "t_located_s": 20.6,
+     "assembled": true,
+     "t_assembled_s": 22.5,
+     "robots_lost": 0,
+     "coverage": 0.484,
+     "messages": 789,
+     "duration_s": 22.5
+    },
+    {
+     "seed": 44,
+     "located": true,
+     "t_located_s": 19.8,
+     "assembled": true,
+     "t_assembled_s": 26.5,
+     "robots_lost": 0,
+     "coverage": 0.47,
+     "messages": 1109,
+     "duration_s": 26.5
+    },
+    {
+     "seed": 45,
+     "located": true,
+     "t_located_s": 38.1,
+     "assembled": true,
+     "t_assembled_s": 52.4,
+     "robots_lost": 1,
+     "coverage": 0.94,
+     "messages": 1817,
+     "duration_s": 52.4
+    },
+    {
+     "seed": 46,
+     "located": true,
+     "t_located_s": 34.4,
+     "assembled": true,
+     "t_assembled_s": 49.2,
+     "robots_lost": 0,
+     "coverage": 0.882,
+     "messages": 1964,
+     "duration_s": 49.2
+    },
+    {
+     "seed": 47,
+     "located": true,
+     "t_located_s": 19.7,
+     "assembled": true,
+     "t_assembled_s": 29.3,
+     "robots_lost": 0,
+     "coverage": 0.476,
+     "messages": 1311,
+     "duration_s": 29.3
+    },
+    {
+     "seed": 48,
+     "located": true,
+     "t_located_s": 44.9,
+     "assembled": true,
+     "t_assembled_s": 78.9,
+     "robots_lost": 0,
+     "coverage": 0.982,
+     "messages": 3539,
+     "duration_s": 78.9
+    },
+    {
+     "seed": 49,
+     "located": true,
+     "t_located_s": 37.7,
+     "assembled": true,
+     "t_assembled_s": 58.2,
+     "robots_lost": 0,
+     "coverage": 0.863,
+     "messages": 2436,
+     "duration_s": 58.2
+    },
+    {
+     "seed": 50,
+     "located": true,
+     "t_located_s": 18.5,
+     "assembled": true,
+     "t_assembled_s": 20.5,
+     "robots_lost": 0,
+     "coverage": 0.426,
+     "messages": 758,
+     "duration_s": 20.5
+    },
+    {
+     "seed": 51,
+     "located": true,
+     "t_located_s": 47.8,
+     "assembled": true,
+     "t_assembled_s": 96.3,
+     "robots_lost": 1,
+     "coverage": 0.842,
+     "messages": 4302,
+     "duration_s": 96.3
+    }
+   ],
+   "after": [
+    {
+     "seed": 40,
+     "located": true,
+     "t_located_s": 16.9,
+     "assembled": true,
+     "t_assembled_s": 27.5,
+     "robots_lost": 0,
+     "coverage": 0.463,
+     "messages": 1328,
+     "duration_s": 27.5
+    },
+    {
+     "seed": 41,
+     "located": true,
+     "t_located_s": 18.7,
+     "assembled": true,
+     "t_assembled_s": 21.3,
+     "robots_lost": 0,
+     "coverage": 0.482,
+     "messages": 801,
+     "duration_s": 21.3
+    },
+    {
+     "seed": 42,
+     "located": true,
+     "t_located_s": 20.1,
+     "assembled": true,
+     "t_assembled_s": 27.5,
+     "robots_lost": 0,
+     "coverage": 0.53,
+     "messages": 1167,
+     "duration_s": 27.5
+    },
+    {
+     "seed": 43,
+     "located": true,
+     "t_located_s": 18.9,
+     "assembled": true,
+     "t_assembled_s": 22.5,
+     "robots_lost": 0,
+     "coverage": 0.484,
+     "messages": 876,
+     "duration_s": 22.5
+    },
+    {
+     "seed": 44,
+     "located": true,
+     "t_located_s": 19.8,
+     "assembled": true,
+     "t_assembled_s": 28.2,
+     "robots_lost": 0,
+     "coverage": 0.512,
+     "messages": 1228,
+     "duration_s": 28.2
+    },
+    {
+     "seed": 45,
+     "located": true,
+     "t_located_s": 40.1,
+     "assembled": true,
+     "t_assembled_s": 57.5,
+     "robots_lost": 0,
+     "coverage": 0.984,
+     "messages": 2276,
+     "duration_s": 57.5
+    },
+    {
+     "seed": 46,
+     "located": true,
+     "t_located_s": 35.1,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 2,
+     "coverage": 0.851,
+     "messages": 4327,
+     "duration_s": 83.3
+    },
+    {
+     "seed": 47,
+     "located": true,
+     "t_located_s": 20.5,
+     "assembled": true,
+     "t_assembled_s": 28.5,
+     "robots_lost": 0,
+     "coverage": 0.469,
+     "messages": 1221,
+     "duration_s": 28.5
+    },
+    {
+     "seed": 48,
+     "located": true,
+     "t_located_s": 44.5,
+     "assembled": true,
+     "t_assembled_s": 54.5,
+     "robots_lost": 0,
+     "coverage": 0.9,
+     "messages": 1837,
+     "duration_s": 54.5
+    },
+    {
+     "seed": 49,
+     "located": true,
+     "t_located_s": 37.7,
+     "assembled": true,
+     "t_assembled_s": 74.8,
+     "robots_lost": 0,
+     "coverage": 0.985,
+     "messages": 3590,
+     "duration_s": 74.8
+    },
+    {
+     "seed": 50,
+     "located": true,
+     "t_located_s": 18.7,
+     "assembled": true,
+     "t_assembled_s": 21.3,
+     "robots_lost": 0,
+     "coverage": 0.403,
+     "messages": 808,
+     "duration_s": 21.3
+    },
+    {
+     "seed": 51,
+     "located": true,
+     "t_located_s": 38.0,
+     "assembled": true,
+     "t_assembled_s": 52.5,
+     "robots_lost": 0,
+     "coverage": 0.893,
+     "messages": 2028,
+     "duration_s": 52.5
+    }
+   ]
+  }
+ }
+}
