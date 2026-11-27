@@ -2,6 +2,7 @@
 
     film = FleetFilm(sim, "demo/x.mp4", size=(1280, 720), field=(xmin, xmax, ymin, ymax), camera="wide")
     film.frame(overlay)   # after each sim.step, or every k-th: the frame rate follows the tick gap
+    film.still(overlay, "poster.png")   # one PNG of the current state at capture resolution
     n = film.close()
 
     ~/projects/newton-sandbox/.venv/bin/python newton_track/film_fleet.py     # demo, no mission layer
@@ -22,6 +23,18 @@ What is drawn, and with which viewer call:
 
 Every batch is rebuilt from the overlay on every frame, so anything that leaves
 the overlay leaves the picture.
+
+The ground is drawn here too, so that the field reads as snow and not as the
+viewer's checkerboard (`snow=False` and `footprints=False` give that back):
+
+    snow                 log_mesh    the viewer's plane is hidden (`show_ground`) and replaced by
+                                     one textured sheet: wind-drawn drifts and ripples, tiling
+    ice patches          log_mesh    pale, slightly glossy blue with a darker rim, laid 2 mm over
+                                     the model's own boxes. Hidden from the robots, not the viewer
+    footprints           log_instances   one soft dark oval per planted foot, along the foot, kept
+                                     for the whole clip: the trail is the sweep coverage. None on
+                                     ice, none from a fallen robot. Feet are sampled when a frame
+                                     is drawn, so film at least every 4th tick or prints go missing
 
 Same display caveats as film.py: `ViewerGL(headless=True)` needs a real screen,
 and a Retina screen returns frames at twice the requested size, so the encoder
@@ -82,6 +95,26 @@ FOLLOW_SMOOTH = 0.08  # per-frame low-pass on the follow camera position
 FRAME_MARGIN = (0.04, 0.04, 0.05, 0.21)
 BAND_RGBA = (10, 14, 22, 150)
 
+# The ground, drawn here instead of by the viewer (whose plane is a checkerboard).
+# Heights are stacked so that nothing is coplanar: snow 0, the model's ice boxes
+# 2 mm, the ice drawn here 4 mm, footprints 5 mm, overlays 30 mm.
+SNOW_TINT = (0.93, 0.95, 0.98)  # fleet_sim.SNOW_COLOR
+SNOW_TILE = 48.0  # m covered by one repeat of the snow texture: more than the wide shot sees
+SNOW_TEXELS = 2048  # 2.3 cm each
+SNOW_HALF = 1500.0  # m, half-width of the snow sheet: past the fog, so it has no visible edge
+ICE_Z = 0.004
+ICE_COLOR = (0.50, 0.76, 0.95)
+ICE_RIM_COLOR = (0.20, 0.38, 0.58)
+ICE_RIM = 0.05  # m
+PRINT_Z = 0.005
+PRINT_CORE = (0.42, 0.47, 0.58)  # the bottom of a print: snow in its own shadow
+PRINT_EDGE = (0.72, 0.76, 0.84)  # and its sloping edge
+PRINT_HALF = (0.105, 0.048)  # m, half length and half width of one print
+PRINT_FORWARD = 0.04  # m from the ankle-roll origin to the middle of the sole
+PRINT_SPACING = 0.20  # m between prints of the same foot. The policy takes 10 cm steps at 4 Hz.
+FOOT_DOWN_Z = 0.05  # m: a planted ankle-roll origin sits at 0.035 to 0.042
+FOOT_STILL = 0.15  # m/s: a planted foot does not move; a swinging one does about 0.8
+
 ROBOT_TOP = 1.55  # m, head marker height above the ground for a standing G1
 HEAD_ABOVE_BASE = 0.74  # m from the pelvis to the head marker, standing
 DOWN_ABOVE_BASE = 0.45  # m from the pelvis to the marker once fallen
@@ -131,6 +164,59 @@ def _circle(cx, cy, r, z, n=RING_SEGMENTS):
     return pts[:-1], pts[1:]
 
 
+def snow_texture(n: int = SNOW_TEXELS, tile: float = SNOW_TILE, seed: int = 7) -> np.ndarray:
+    """(n, n, 3) uint8 wind-packed snow that tiles seamlessly: broad drifts drawn
+    out along one diagonal, and a finer grain so the ground moves under a camera.
+
+    Filtered white noise built in the Fourier domain, which is periodic by
+    construction. Darker is also bluer, as snow in a hollow is.
+    """
+    rng = np.random.default_rng(seed)
+    f = np.fft.fftfreq(n, d=tile / n)  # cycles per metre
+    fx, fy = np.meshgrid(f, f, indexing="xy")
+    c, sn = math.cos(math.radians(25.0)), math.sin(math.radians(25.0))
+    along, across = c * fx + sn * fy, -sn * fx + c * fy
+
+    def field(weight):
+        z = np.fft.ifft2(np.fft.fft2(rng.standard_normal((n, n))) * weight).real
+        return z / z.std()
+
+    drift = field(np.exp(-((along * 5.0) ** 2 + (across * 2.0) ** 2)))  # about 5 m by 2 m
+    ripple = field(np.exp(-((along * 1.5) ** 2 + (across * 0.3) ** 2)))  # about 1.5 m by 0.3 m
+    grain = field(np.exp(-(((np.hypot(fx, fy) - 5.0) / 2.5) ** 2)))  # about 0.2 m
+    # Ripples only ever darken: the lee side of a wind ridge is in shade, its crest is not brighter.
+    dark = np.clip(0.07 + 0.028 * drift + 0.060 * np.maximum(ripple - 0.4, 0.0) + 0.020 * grain, 0.0, 0.30)
+    rgb = 1.0 - dark[..., None] * np.array([1.25, 1.08, 0.80])
+    return (np.clip(rgb, 0.0, 1.0) * 255).astype(np.uint8)
+
+
+def print_texture(n: int = 64) -> np.ndarray:
+    """(n, n, 3) uint8 for one footprint disc: a dark floor fading up to a paler edge."""
+    u = (np.arange(n) + 0.5) / n - 0.5
+    r = 2.0 * np.hypot(*np.meshgrid(u, u))
+    t = np.clip((r - 0.62) / 0.38, 0.0, 1.0)[..., None] ** 1.5
+    rgb = (1 - t) * np.array(PRINT_CORE) + t * np.array(PRINT_EDGE)
+    return (rgb * 255).astype(np.uint8)
+
+
+def _write_png(path, rgb: np.ndarray):
+    if Image is not None:
+        Image.fromarray(rgb).save(path)
+        return
+    import struct  # noqa: PLC0415
+    import zlib  # noqa: PLC0415
+
+    h, w = rgb.shape[:2]
+    rows = np.concatenate([np.zeros((h, 1), dtype=np.uint8), rgb.reshape(h, w * 3)], axis=1).tobytes()
+
+    def chunk(tag: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data))
+
+    head = chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+    body = chunk(b"IDAT", zlib.compress(rows, 6)) + chunk(b"IEND", b"")
+    pathlib.Path(path).write_bytes(b"\x89PNG\r\n\x1a\n" + head + body)
+
+
 def _font(px: int):
     for path in (
         "/System/Library/Fonts/Helvetica.ttc",
@@ -157,6 +243,8 @@ class FleetFilm:
         *,
         fps: float | None = None,  # None: real time, from the tick gap between the first two frames
         legend: bool = True,
+        snow: bool = True,  # False: the viewer's own checkerboard plane and flat blue patches
+        footprints: bool = True,
     ):
         if camera not in ("wide", "follow"):
             raise ValueError(f"camera must be 'wide' or 'follow', got {camera!r}")
@@ -181,6 +269,11 @@ class FleetFilm:
         self._hazard_key = None
         self._hazard_mesh = None
         self._balls_logged = False
+        self.snow = snow
+        self.footprints = footprints
+        self._prints: list = []  # (x, y, yaw), one per footprint, for the whole clip
+        self._prints_drawn = 0
+        self._feet: dict = {}  # (robot, foot) -> [x, y, sim.t, planted, last print x, last print y]
 
         if field is None:  # no rectangle given: frame the starting line-up generously
             xy = self._base()[:, :2]
@@ -203,6 +296,14 @@ class FleetFilm:
         # Line width is in framebuffer pixels, and the framebuffer is 2x on Retina.
         r.line_width = 1.6 * v.renderer.window.get_framebuffer_size()[0] / self.w
         v.log_geo("/fleet/ball_mesh", newton.GeoType.SPHERE, (1.0,), 0.0, True, hidden=True)
+        if self.snow:
+            self._build_ground()
+        if self.footprints:
+            a = np.linspace(0.0, 2 * math.pi, 20, endpoint=False)
+            disc = np.concatenate([[[0.0, 0.0, 0.0]], np.stack([np.cos(a), np.sin(a), 0 * a], axis=1)])
+            fan = [[0, 1 + k, 1 + (k + 1) % 20] for k in range(20)]
+            uvs = wp.array(np.float32(0.5 + 0.5 * disc[:, :2]), dtype=wp.vec2, device=v.device)
+            v.log_mesh("/fleet/print_mesh", *self._flat(disc, fan), uvs, texture=print_texture(), hidden=True)
         self.wide_pos = fit_camera(_box_points(*self.field), WIDE_YAW, WIDE_PITCH, self.w / self.h)
 
     # -- scene queries -----------------------------------------------------
@@ -238,8 +339,7 @@ class FleetFilm:
         down = np.asarray(self.sim.down, dtype=bool)
         k = 1.0 if self.camera == "wide" else 0.7  # markers shrink a little for the closer camera
         head = base.copy()
-        # A fallen robot's pelvis can end up at or just under z = 0 (only its feet
-        # and torso collide with the ground), so its marker is measured from the snow.
+        # Never measure a marker from below the snow, wherever a fallen pelvis ends up.
         head[:, 2] = np.maximum(base[:, 2], 0.0) + np.where(down, DOWN_ABOVE_BASE, HEAD_ABOVE_BASE)
         roles = list(ov.roles or [])
         role_col = [ROLE_COLORS.get(roles[r], UNKNOWN_ROLE_COLOR) if r < len(roles) else None for r in range(n)]
@@ -351,6 +451,114 @@ class FleetFilm:
             metallic=0.0, dynamic=True,
         )  # fmt: skip
 
+    # -- the ground: snow, ice, footprints ---------------------------------
+
+    def _flat(self, verts, tris):
+        """Warp arrays for an upward-facing flat mesh: points, indices, normals."""
+        dev = self.viewer.device
+        verts = np.asarray(verts, dtype=np.float32)
+        return (
+            wp.array(verts, dtype=wp.vec3, device=dev),
+            wp.array(np.asarray(tris, dtype=np.int32).ravel(), dtype=wp.int32, device=dev),
+            wp.array(np.tile(np.float32([[0.0, 0.0, 1.0]]), (len(verts), 1)), dtype=wp.vec3, device=dev),
+        )
+
+    def _ground_object(self, name: str, textured: bool = False):
+        """Flat ground decoration: it casts no shadow, and a texture has to be
+        switched on by hand because `log_mesh` uploads one without enabling it."""
+        obj = self.viewer.objects.get(name)
+        if obj is None:
+            return
+        obj.cast_shadow = False
+        if textured and getattr(obj, "texture_id", None) is not None:
+            rough, metal, checker, _ = obj.material
+            obj.material = (rough, metal, checker, 1.0)
+
+    def _build_ground(self):
+        """Replace the viewer's checkerboard plane by a snow sheet, and dress the ice."""
+        v, dev = self.viewer, self.viewer.device
+        v.show_ground = False  # hides plane shapes only; the model's ice boxes stay
+        cx, cy = 0.5 * (self.field[0] + self.field[1]), 0.5 * (self.field[2] + self.field[3])
+        h = SNOW_HALF
+        corners = [(cx - h, cy - h, 0.0), (cx + h, cy - h, 0.0), (cx + h, cy + h, 0.0), (cx - h, cy + h, 0.0)]
+        pts, idx, nrm = self._flat(corners, [[0, 1, 2], [0, 2, 3]])
+        uvs = wp.array(np.float32(corners)[:, :2] / SNOW_TILE, dtype=wp.vec2, device=dev)
+        v.log_mesh(
+            "/fleet/snow", pts, idx, nrm, uvs, texture=snow_texture(), color=SNOW_TINT, roughness=0.95, metallic=0.0
+        )
+        self._ground_object("/fleet/snow", textured=True)
+
+        ice, rim = [], []
+        for p in getattr(self.sim, "patches", []):
+            x0, x1, y0, y1 = p.x - p.hx, p.x + p.hx, p.y - p.hy, p.y + p.hy
+            ice.append((x0, x1, y0, y1))
+            w = ICE_RIM
+            rim += [(x0 - w, x1 + w, y0 - w, y0), (x0 - w, x1 + w, y1, y1 + w)]  # the two long strips,
+            rim += [(x0 - w, x0, y0, y1), (x1, x1 + w, y0, y1)]  # and the two between them
+        for name, rects, color, rough, metal in (
+            ("/fleet/ice", ice, ICE_COLOR, 0.15, 0.20),  # slightly glossy: it picks up the sky
+            ("/fleet/ice_rim", rim, ICE_RIM_COLOR, 0.60, 0.0),
+        ):
+            if not rects:
+                continue
+            verts = [(x, y, ICE_Z) for x0, x1, y0, y1 in rects for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1))]
+            tris = [[4 * k + a, 4 * k + b, 4 * k + c] for k in range(len(rects)) for a, b, c in ((0, 1, 2), (0, 2, 3))]
+            v.log_mesh(name, *self._flat(verts, tris), color=color, roughness=rough, metallic=metal)
+            self._ground_object(name)
+
+    def _track_feet(self):
+        """Add a footprint wherever a foot has just been planted on snow.
+
+        A foot is planted when its ankle-roll origin is low and not moving. The
+        height alone is not enough: this gait lifts one foot 3 cm and the other
+        barely 1.5 cm. Prints of one foot are kept `PRINT_SPACING` apart, because
+        the policy's steps are half a print long. A fallen robot leaves none, and
+        neither does a foot on ice.
+        """
+        sim = self.sim
+        bq = sim.state_0.body_q.numpy()
+        for r in range(sim.n):
+            if sim.down[r]:
+                continue
+            for i in sim.foot_local:
+                x, y, z = (float(c) for c in bq[r * sim.bodies_per_robot + i][:3])
+                last = self._feet.get((r, i))
+                dt = (sim.t - last[2]) / POLICY_HZ if last else 0.0
+                if last and dt <= 0.0:
+                    continue  # the same tick drawn twice (a frame and a still)
+                speed = math.hypot(x - last[0], y - last[1]) / dt if last else 0.0
+                planted = z < FOOT_DOWN_Z and speed < FOOT_STILL
+                px, py = (last[4], last[5]) if last else (math.inf, math.inf)
+                if planted and not (last and last[3]) and math.hypot(x - px, y - py) >= PRINT_SPACING:
+                    q = bq[r * sim.bodies_per_robot + i][3:7]
+                    yaw = math.atan2(2 * (q[3] * q[2] + q[0] * q[1]), 1 - 2 * (q[1] ** 2 + q[2] ** 2))
+                    fx, fy = x + PRINT_FORWARD * math.cos(yaw), y + PRINT_FORWARD * math.sin(yaw)
+                    if not any(p.contains(fx, fy, 0.10) for p in getattr(sim, "patches", [])):
+                        self._prints.append((fx, fy, yaw))
+                        px, py = x, y
+                self._feet[(r, i)] = [x, y, sim.t, planted, px, py]
+
+    def _draw_prints(self):
+        """All footprints in one instanced draw, re-uploaded only when one was added."""
+        n = len(self._prints)
+        if n == self._prints_drawn:
+            return
+        v, dev = self.viewer, self.viewer.device
+        pr = np.asarray(self._prints, dtype=np.float32)
+        xf = np.zeros((n, 7), dtype=np.float32)
+        xf[:, 0], xf[:, 1], xf[:, 2] = pr[:, 0], pr[:, 1], PRINT_Z
+        xf[:, 5], xf[:, 6] = np.sin(pr[:, 2] / 2), np.cos(pr[:, 2] / 2)
+        v.log_instances(
+            "/fleet/prints",
+            "/fleet/print_mesh",
+            wp.array(xf, dtype=wp.transform, device=dev),
+            wp.array(np.tile(np.float32([[*PRINT_HALF, 1.0]]), (n, 1)), dtype=wp.vec3, device=dev),
+            wp.array(np.ones((n, 3), dtype=np.float32), dtype=wp.vec3, device=dev),  # the texture has the colour
+            wp.array(np.tile(np.float32([[1.0, 0.0, 0.0, 1.0]]), (n, 1)), dtype=wp.vec4, device=dev),  # matte, textured
+        )
+        self._ground_object("/fleet/prints")
+        self._prints_drawn = n
+
     # -- 2-D burn-in -------------------------------------------------------
 
     def _caption_strip(self, text: str, fw: int, u: float):
@@ -414,6 +622,9 @@ class FleetFilm:
         v.set_camera(wp.vec3(*(float(c) for c in pos)), pitch=pitch, yaw=yaw)
         v.begin_frame(self.sim.t / POLICY_HZ)
         v.log_state(self.sim.state_0)
+        if self.footprints:
+            self._track_feet()
+            self._draw_prints()
         self._draw_overlay(ov, base)
         v.end_frame()
         frame = v.get_frame().numpy()
@@ -432,6 +643,14 @@ class FleetFilm:
                 strip = self._caption_strip(ov.caption, fw, u)
                 self._blend(frame, strip, 0, y - strip.shape[0])
         return frame
+
+    def still(self, overlay: Overlay | None, path) -> pathlib.Path:
+        """Write the current state plus `overlay` as one PNG at capture resolution
+        (twice `size` on a Retina screen). Does not add a frame to the film."""
+        path = pathlib.Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        _write_png(path, self.render(overlay))
+        return path
 
     def frame(self, overlay: Overlay | None = None):
         if self._closed:

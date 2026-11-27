@@ -126,6 +126,43 @@ def snow():
     print()
 
 
+def fleet():
+    """Paired fleet missions: coordinated vs independent, without and with the slip reflex."""
+    files = [("no reflex", load("fleet_search.json")), ("slip reflex", load("fleet_search_reflex.json"))]
+    files = [(n, d) for n, d in files if d]
+    if not files:
+        return
+    d0 = files[0][1]
+    print(f"### Fleet search ({d0['robots']} robots, {d0['summary'][next(iter(d0['summary']))]['missions']} paired seeds, "
+          f"snow mu {d0['snow_mu']}, ice mu {d0['ice_mu']})\n")
+    print("| robots | radio | beacon located | dig team assembled | robots lost per mission | median time to locate s | median time to assemble s |")
+    print("|---|---|---|---|---|---|---|")
+    for name, d in files:
+        for mode, sm in d["summary"].items():
+            print(
+                f"| {name} | {'on' if mode == 'coordinated' else 'off'} | {sm['located']}/{sm['missions']} | "
+                f"{sm['assembled']}/{sm['missions']} | {sm['robots_lost_mean']:.2f} | "
+                f"{sm['t_located_median_s'] if sm['t_located_median_s'] is not None else '-'} | "
+                f"{sm['t_assembled_median_s'] if sm['t_assembled_median_s'] is not None else '-'} |"
+            )
+    print()
+    for name, d in files:
+        rows = d["rows"]
+        seeds = sorted({r["seed"] for r in rows})
+        by = {(r["seed"], r["mode"]): r for r in rows}
+        if not all((s, "coordinated") in by and (s, "independent") in by for s in seeds):
+            continue
+        win = sum(by[s, "coordinated"]["assembled"] and not by[s, "independent"]["assembled"] for s in seeds)
+        lose = sum(by[s, "independent"]["assembled"] and not by[s, "coordinated"]["assembled"] for s in seeds)
+        more = sum(by[s, "coordinated"]["robots_lost"] > by[s, "independent"]["robots_lost"] for s in seeds)
+        fewer = sum(by[s, "coordinated"]["robots_lost"] < by[s, "independent"]["robots_lost"] for s in seeds)
+        print(
+            f"- {name}, paired by seed: the team assembles with the radio on and not off on {win} seeds, the "
+            f"reverse on {lose}. Radio on loses more robots on {more} seeds and fewer on {fewer}."
+        )
+    print()
+
+
 if __name__ == "__main__":
     cal = load("friction_calibration.json")
     if cal:
@@ -140,3 +177,4 @@ if __name__ == "__main__":
     slope()
     sweep("speed", "command_vx", "m/s", "ice_sweep_mujoco_elliptic_speed.json")
     snow()
+    fleet()
