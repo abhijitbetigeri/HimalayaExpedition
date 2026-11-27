@@ -171,32 +171,64 @@ def steer(pose, target, v_max: float, stop_within: float = 0.25) -> tuple[float,
     return float(v), 0.0, wz
 
 
-def route(pos, target, hazards, clearance: float = 0.45):
-    """Next point to walk to: `target`, or a side-step around the first mapped hazard in the way."""
+def route(pos, target, obstacles, clearance: float = 0.45, memory: dict | None = None):
+    """Next point to walk to: `target`, or a waypoint that passes the obstacles in the way.
+
+    `obstacles` are discs (x, y, r). The ones blocking the straight line are
+    grown into a cluster with every disc that touches them, and the whole
+    cluster is passed on ONE side. `memory` (per agent) remembers which side
+    was chosen for each disc, so the choice survives replanning every tick.
+    Without it a robot facing two discs side by side picked left, then right,
+    then left, for 36 seconds, and ended up back on the ice (seed 8).
+    """
     px, py = pos
     tx, ty = target
     seg = np.array([tx - px, ty - py])
     length = float(np.linalg.norm(seg))
-    if length < 1e-6:
+    if length < 1e-6 or not obstacles:
         return target
     u = seg / length
-    best = None
-    for hx, hy, hr in hazards:
-        rel = np.array([hx - px, hy - py])
-        along = float(rel @ u)
-        if along < -hr or along > length + hr:
-            continue
-        across = float(u[0] * rel[1] - u[1] * rel[0])  # hazard centre is left of the path if positive
-        if abs(across) > hr + clearance:
-            continue
-        if best is None or along < best[0]:
-            best = (along, across, hx, hy, hr)
-    if best is None:
+    left = np.array([-u[1], u[0]])
+    geo = []  # (along, across, r, key) with across > 0 meaning the disc centre is left of the path
+    for ox, oy, r in obstacles:
+        rel = np.array([ox - px, oy - py])
+        geo.append((float(rel @ u), float(left @ rel), r, (round(ox, 2), round(oy, 2))))
+    blocking = [
+        k for k, (along, across, r, _key) in enumerate(geo)
+        if -r < along < length - 0.2 and abs(across) < r + clearance
+        and math.hypot(obstacles[k][0] - tx, obstacles[k][1] - ty) > r + clearance  # cannot avoid what the target sits beside
+    ]  # fmt: skip
+    if not blocking:
         return target
-    _along, across, hx, hy, hr = best
-    side = -1.0 if across > 0 else 1.0  # pass on the side the path already leans to
-    normal = np.array([-u[1], u[0]])
-    return (hx + side * normal[0] * (hr + clearance + 0.3), hy + side * normal[1] * (hr + clearance + 0.3))
+    cluster = {min(blocking, key=lambda k: geo[k][0])}
+    grew = True
+    while grew:
+        grew = False
+        for k, (ox, oy, r) in enumerate(obstacles):
+            if k in cluster:
+                continue
+            if any(math.hypot(ox - obstacles[c][0], oy - obstacles[c][1]) < r + obstacles[c][2] + 2 * clearance for c in cluster):
+                cluster.add(k)
+                grew = True
+    margin = clearance + 0.3
+    go_left = max(geo[k][1] + geo[k][2] for k in cluster) + margin  # lateral offset that clears them all on the left
+    go_right = min(geo[k][1] - geo[k][2] for k in cluster) - margin
+    side = None
+    if memory is not None:
+        side = next((memory[geo[k][3]] for k in cluster if geo[k][3] in memory), None)
+    if side is None:
+        side = "left" if abs(go_left) <= abs(go_right) else "right"
+    if memory is not None:
+        for k in cluster:
+            memory[geo[k][3]] = side
+    lateral = go_left if side == "left" else go_right
+    along = max(0.6, min(geo[k][0] for k in cluster))
+    w = np.array([px, py]) + u * along + left * lateral
+    return float(w[0]), float(w[1])
+
+
+N_SLOTS = 12  # dig positions around the burial point; neighbours of a taken slot stay empty
+STRAGGLER_GAP = 3.0  # a sweeper this far behind the front is not holding a lane
 
 
 class RobotAgent:
@@ -206,7 +238,7 @@ class RobotAgent:
         self.id, self.n, self.coordinated = rid, n, coordinated
         self.role = "sweep"
         self.home_lane_x = start_x
-        self.roster = {}  # id -> dict(x, y, role, t) from heartbeats
+        self.roster = {}  # id -> dict(x, y, role, slot, t) from heartbeats
         self.lost = set()
         self.hazards = []  # (x, y, r)
         self.best_signal = None  # (range, (x, y), reporter)
@@ -214,58 +246,78 @@ class RobotAgent:
         self.target = None
         self.holding = False
         self.stuck_ticks = 0
+        self.slot = None  # index of the dig position this robot has claimed
+        self.sides = {}  # route() memory: which side each obstacle is passed on
+        self.yield_ticks = 0
 
     # ---- shared rules: every agent computes these from the same roster ----
 
-    def _standing(self, t: int, me) -> list:
-        ids = [self.id]
+    def _heard(self, t: int) -> dict:
+        return {r: i for r, i in self.roster.items() if r not in self.lost and t - i["t"] <= LOST_AFTER}
+
+    def _in_line(self, t: int, me) -> list:
+        """Sweepers level with the front, left to right. A robot more than
+        STRAGGLER_GAP behind (backing off ice, working round a hazard) is left
+        out, so the others close up over its lane instead of waiting for it:
+        on seed 8 they swept on in their old lanes and walked past the beacon."""
+        ys = {self.id: me[1]}
         xs = {self.id: me[0]}
-        for rid, info in self.roster.items():
-            if rid in self.lost or t - info["t"] > LOST_AFTER:
-                continue
-            ids.append(rid)
-            xs[rid] = info["x"]
-        return sorted(ids, key=lambda r: (xs[r], r))
+        for r, i in self._heard(t).items():
+            if i["role"] in ("sweep", "backoff"):
+                ys[r], xs[r] = i["y"], i["x"]
+        front = max(ys.values())
+        return sorted((r for r in ys if ys[r] >= front - STRAGGLER_GAP), key=lambda r: (xs[r], r))
 
     def _lane_x(self, t: int, me) -> float:
         if not self.coordinated:
             return self.home_lane_x
-        order = self._standing(t, me)
+        order = self._in_line(t, me)
+        if self.id not in order:
+            return float(np.clip(me[0], FIELD[0] + 0.5, FIELD[1] - 0.5))  # straggler: straight ahead until it catches up
         x0, x1, _, _ = FIELD
         return x0 + (order.index(self.id) + 0.5) * (x1 - x0) / len(order)
 
     def _line_y(self, t: int, me) -> float:
-        ys = [me[1]] + [
-            i["y"] for r, i in self.roster.items() if r not in self.lost and t - i["t"] <= LOST_AFTER and i["role"] == "sweep"
-        ]
-        return float(np.mean(ys))
+        order = self._in_line(t, me)
+        if self.id not in order:
+            return me[1]  # a straggler does not slow down for anyone
+        heard = self._heard(t)
+        return float(np.mean([me[1] if r == self.id else heard[r]["y"] for r in order]))
+
+    def _slot_xy(self, k: int, centre) -> tuple[float, float]:
+        a = 2 * math.pi * k / N_SLOTS
+        return centre[0] + DIG_RADIUS * math.cos(a), centre[1] + DIG_RADIUS * math.sin(a)
 
     def _dig_slot(self, t: int, me, centre) -> tuple[float, float]:
-        """Ring positions shared out by bearing, so nobody's path crosses another's."""
-        helpers = [r for r in self._standing(t, me) if r != self.best_signal[2]]
-        pos = {self.id: (me[0], me[1])}
-        pos.update({r: (i["x"], i["y"]) for r, i in self.roster.items()})
-        angles = [a for a in np.linspace(-math.pi, math.pi, 16, endpoint=False)
-                  if not any(math.hypot(centre[0] + DIG_RADIUS * math.cos(a) - hx, centre[1] + DIG_RADIUS * math.sin(a) - hy) < hr
-                             for hx, hy, hr in self.hazards)]  # fmt: skip
-        if not angles or self.id not in helpers:
-            return centre
-        by_bearing = sorted(helpers, key=lambda r: math.atan2(pos[r][1] - centre[1], pos[r][0] - centre[0]))
-        # each helper takes the free slot nearest its own bearing, in bearing order
-        taken, mine = set(), None
-        for r in by_bearing:
-            b = math.atan2(pos[r][1] - centre[1], pos[r][0] - centre[0])
-            k = min((k for k in range(len(angles)) if k not in taken), key=lambda k: abs(wrap(angles[k] - b)), default=None)
-            if k is None:
-                break
-            taken.add(k)
-            # keep neighbours from standing shoulder to shoulder
-            taken.update({(k - 1) % len(angles), (k + 1) % len(angles)} if len(angles) >= 3 * len(by_bearing) else set())
-            if r == self.id:
-                mine = angles[k]
-        if mine is None:
-            return centre
-        return centre[0] + DIG_RADIUS * math.cos(mine), centre[1] + DIG_RADIUS * math.sin(mine)
+        """Claim a dig position and keep it.
+
+        Claims travel in the heartbeat. A teammate's claim outranks mine if it
+        is already holding there or has a lower id, and a taken slot also
+        blocks its two neighbours so nobody stands shoulder to shoulder. The
+        first version shared slots out by bearing every tick: assignments
+        flipped as robots moved, and on seed 17 the first to park stood in
+        the way of the two behind it for 80 seconds.
+        """
+        blocked = set()
+        for r, i in self._heard(t).items():
+            k = i.get("slot")
+            if k is not None and (i["role"] == "hold" or r < self.id):
+                blocked.update({(k - 1) % N_SLOTS, k, (k + 1) % N_SLOTS})
+        free = [
+            k for k in range(N_SLOTS)
+            if k not in blocked
+            and not any(math.hypot(self._slot_xy(k, centre)[0] - hx, self._slot_xy(k, centre)[1] - hy) < hr for hx, hy, hr in self.hazards)
+        ]  # fmt: skip
+        if self.slot not in free:
+            if not free:
+                self.slot = None
+                return centre
+            self.slot = min(free, key=lambda k: math.hypot(self._slot_xy(k, centre)[0] - me[0], self._slot_xy(k, centre)[1] - me[1]))
+        return self._slot_xy(self.slot, centre)
+
+    def _teammate_discs(self, t: int) -> list:
+        """Teammates that are parked: walk round them, do not queue behind them."""
+        return [(i["x"], i["y"], 0.45) for i in self._heard(t).values() if i["role"] in ("hold", "locate", "down")]
 
     # ---- one tick ----
 
@@ -276,7 +328,7 @@ class RobotAgent:
         for m in inbox:
             src = m["from"]
             if m["type"] == "POSE":
-                self.roster[src] = {"x": m["x"], "y": m["y"], "role": m["role"], "t": t}
+                self.roster[src] = {"x": m["x"], "y": m["y"], "role": m["role"], "slot": m.get("slot"), "t": t}
             elif m["type"] == "DOWN":
                 self.lost.add(src)
             elif m["type"] == "HAZARD":
@@ -298,8 +350,14 @@ class RobotAgent:
             return (0.0, 0.0, 0.0), out
 
         if ice_event is not None:  # own slip reflex confirmed ice
-            self._add_hazard(ice_event["x"], ice_event["y"])
-            out.append({"type": "HAZARD", "x": ice_event["x"], "y": ice_event["y"]})
+            # The reflex reports where the EDGE is. The ice is beyond it, in the
+            # direction the robot was walking (it backs straight out, so its
+            # heading still points at the ice). Centre the hazard there: a disc
+            # on the edge condemns as much good snow as ice.
+            hx = ice_event["x"] + 0.6 * HAZARD_RADIUS * math.cos(me[2])
+            hy = ice_event["y"] + 0.6 * HAZARD_RADIUS * math.sin(me[2])
+            self._add_hazard(hx, hy)
+            out.append({"type": "HAZARD", "x": hx, "y": hy})
 
         if reading is not None:
             rng_meas, est = reading
@@ -308,36 +366,37 @@ class RobotAgent:
                 out.append({"type": "SIGNAL", "x": est[0], "y": est[1], "range": rng_meas})
 
         if t % HEARTBEAT == self.id % HEARTBEAT:
-            out.append({"type": "POSE", "x": me[0], "y": me[1], "role": self.role})
+            out.append({"type": "POSE", "x": me[0], "y": me[1], "role": self.role, "slot": self.slot})
 
-        x0, x1, y0, y1 = FIELD
+        _x0, _x1, _y0, y1 = FIELD
         pos = (me[0], me[1])
 
         # -- pinpoint / dig: someone has the signal --
         if self.best_signal is not None:
             _rng, est, who = self.best_signal
             if who == self.id:
-                self.role = "locate"
                 goal = self.found or est
-                self.target = route(pos, goal, self.hazards)
+                if self.found is not None and self._arrived(pos, self.found, 0.5, 0.9):
+                    self.role = "hold"
+                    return self._keep_station(me, self.found), out
+                self.role = "locate"
+                self.target = route(pos, goal, self.hazards, memory=self.sides)
                 cmd = steer(me, self.target, 0.35, stop_within=0.3)
                 close = reading is not None and reading[0] < 0.6
                 self.stuck_ticks = self.stuck_ticks + 1 if cmd[0] == 0.0 and abs(cmd[2]) < 0.2 else 0
                 if self.found is None and (close or (self.stuck_ticks > POLICY_HZ and reading is not None)):
                     self.found = reading[1] if reading is not None else est
                     out.append({"type": "FOUND", "x": self.found[0], "y": self.found[1]})
-                if self.found is not None and self._arrived(pos, self.found, 0.5, 0.9):
-                    self.role = "hold"
-                    return (0.0, 0.0, 0.0), out
                 return cmd, out
             # a teammate is pinpointing: take a dig position
             slot = self._dig_slot(t, me, self.found or est)
-            self.target = route(pos, slot, self.hazards)
-            if self._arrived(pos, slot, 0.35, 0.75):
+            if self._arrived(pos, slot, 0.35, 0.9):
                 self.role = "hold"
-                return (0.0, 0.0, 0.0), out
+                self.target = slot
+                return self._keep_station(me, slot), out
             self.role = "converge"
-            return self._yield_to_others(me, steer(me, self.target, V_SWEEP, stop_within=0.3)), out
+            self.target = route(pos, slot, self.hazards + self._teammate_discs(t), memory=self.sides)
+            return self._yield_to_others(t, me, steer(me, self.target, V_SWEEP, stop_within=0.3)), out
 
         # -- sweep --
         if me[1] >= y1 - 0.3:
@@ -346,12 +405,12 @@ class RobotAgent:
             return (0.0, 0.0, 0.0), out
         self.role = "sweep"
         lane_x = self._lane_x(t, me)
-        self.target = route(pos, (lane_x, min(y1, me[1] + 2.5)), self.hazards)
+        self.target = route(pos, (lane_x, min(y1, me[1] + 2.5)), self.hazards, memory=self.sides)
         v = V_SWEEP
         if self.coordinated:
             ahead = me[1] - self._line_y(t, me)
             v = float(np.clip(V_SWEEP - 0.6 * ahead, 0.15, V_SWEEP))
-        return self._yield_to_others(me, steer(me, self.target, v)), out
+        return self._yield_to_others(t, me, steer(me, self.target, v)), out
 
     def _arrived(self, pos, goal, enter: float, leave: float) -> bool:
         """Hold with hysteresis. A standing robot drifts a few centimetres a second;
@@ -360,19 +419,30 @@ class RobotAgent:
         self.holding = d < (leave if self.holding else enter)
         return self.holding
 
+    def _keep_station(self, me, goal):
+        """Holding is not a zero command. This policy wanders when told to stand:
+        a robot parked on the beacon drifted half a metre in six seconds. Inside
+        25 cm it stands; beyond that it steps back at a crawl."""
+        return steer(me, goal, 0.2, stop_within=0.25)
+
     def _add_hazard(self, x: float, y: float):
         if all(math.hypot(x - hx, y - hy) > 0.6 for hx, hy, _ in self.hazards):
             self.hazards.append((x, y, HAZARD_RADIUS))
 
-    def _yield_to_others(self, me, cmd):
-        """Do not walk into a teammate. Lower id has right of way."""
-        for rid, info in self.roster.items():
-            if rid in self.lost:
+    def _yield_to_others(self, t: int, me, cmd):
+        """Give way to a MOVING teammate with a lower id that is right in front.
+        Parked teammates are obstacles for route(), not something to wait for,
+        and no wait lasts more than two seconds."""
+        blocked = False
+        for rid, info in self._heard(t).items():
+            if rid > self.id or info["role"] in ("hold", "locate", "down"):
                 continue
             dx, dy = info["x"] - me[0], info["y"] - me[1]
-            d = math.hypot(dx, dy)
-            if d < 0.9 and abs(wrap(math.atan2(dy, dx) - me[2])) < 1.0 and (rid < self.id or info["role"] == "hold"):
-                return (0.0, 0.0, cmd[2])
+            if math.hypot(dx, dy) < 0.8 and abs(wrap(math.atan2(dy, dx) - me[2])) < 1.0:
+                blocked = True
+        self.yield_ticks = self.yield_ticks + 1 if blocked else 0
+        if blocked and self.yield_ticks % (4 * POLICY_HZ) < 2 * POLICY_HZ:
+            return (0.0, 0.0, cmd[2])
         return cmd
 
 
@@ -565,6 +635,7 @@ def summarise(rows: list) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--seeds", type=int, default=20)
+    ap.add_argument("--seed-start", type=int, default=0, help="first seed; 20 onward were never used to debug the planner")
     ap.add_argument("--robots", type=int, default=4)
     ap.add_argument("--mode", default="both", choices=("both", "coordinated", "independent"))
     ap.add_argument("--reflex", action="store_true", help="enable the slip reflex (fleet_reflex.py) on every robot")
@@ -582,7 +653,7 @@ def main() -> int:
     modes = ("coordinated", "independent") if args.mode == "both" else (args.mode,)
     rows = []
     t0 = time.time()
-    for seed in range(args.seeds):
+    for seed in range(args.seed_start, args.seed_start + args.seeds):
         for mode in modes:
             r = run(seed, mode, args.robots, args.reflex)
             rows.append(r)
@@ -592,12 +663,12 @@ def main() -> int:
     for m, s in summary.items():
         print(f"{m:<12} {s}")
     out = pathlib.Path(args.out) if args.out else pathlib.Path(__file__).resolve().parent / "results" / (
-        "fleet_search_reflex.json" if args.reflex else "fleet_search.json"
+        ("fleet_search_reflex" if args.reflex else "fleet_search") + (f"_from{args.seed_start}" if args.seed_start else "") + ".json"
     )
     out.parent.mkdir(exist_ok=True)
     out.write_text(json.dumps({
         "robots": args.robots, "field": FIELD, "sense_range": SENSE_RANGE, "ice_mu": ICE_MU, "snow_mu": SNOW_MU,
-        "reflex": args.reflex, "summary": summary, "rows": rows,
+        "reflex": args.reflex, "seed_start": args.seed_start, "summary": summary, "rows": rows,
     }, indent=1))  # fmt: skip
     print(f"\nwrote {out}  ({time.time() - t0:.0f} s)")
     return 0

@@ -127,40 +127,40 @@ def snow():
 
 
 def fleet():
-    """Paired fleet missions: coordinated vs independent, without and with the slip reflex."""
-    files = [("no reflex", load("fleet_search.json")), ("slip reflex", load("fleet_search_reflex.json"))]
-    files = [(n, d) for n, d in files if d]
-    if not files:
-        return
-    d0 = files[0][1]
-    print(f"### Fleet search ({d0['robots']} robots, {d0['summary'][next(iter(d0['summary']))]['missions']} paired seeds, "
-          f"snow mu {d0['snow_mu']}, ice mu {d0['ice_mu']})\n")
-    print("| robots | radio | beacon located | dig team assembled | robots lost per mission | median time to locate s | median time to assemble s |")
-    print("|---|---|---|---|---|---|---|")
-    for name, d in files:
-        for mode, sm in d["summary"].items():
-            print(
-                f"| {name} | {'on' if mode == 'coordinated' else 'off'} | {sm['located']}/{sm['missions']} | "
-                f"{sm['assembled']}/{sm['missions']} | {sm['robots_lost_mean']:.2f} | "
-                f"{sm['t_located_median_s'] if sm['t_located_median_s'] is not None else '-'} | "
-                f"{sm['t_assembled_median_s'] if sm['t_assembled_median_s'] is not None else '-'} |"
-            )
-    print()
-    for name, d in files:
-        rows = d["rows"]
-        seeds = sorted({r["seed"] for r in rows})
-        by = {(r["seed"], r["mode"]): r for r in rows}
-        if not all((s, "coordinated") in by and (s, "independent") in by for s in seeds):
+    """Paired fleet missions: radio on vs off, without and with the slip reflex,
+    on the seeds the planner was debugged on and on seeds it never saw."""
+    sets = [
+        ("seeds 0-19 (planner debugged on these)", "fleet_search.json", "fleet_search_reflex.json"),
+        ("seeds 20-39 (held out)", "fleet_search_from20.json", "fleet_search_reflex_from20.json"),
+    ]
+    for title, plain, reflex in sets:
+        files = [(n, load(f)) for n, f in (("off", plain), ("on", reflex))]
+        files = [(n, d) for n, d in files if d]
+        if not files:
             continue
-        win = sum(by[s, "coordinated"]["assembled"] and not by[s, "independent"]["assembled"] for s in seeds)
-        lose = sum(by[s, "independent"]["assembled"] and not by[s, "coordinated"]["assembled"] for s in seeds)
-        more = sum(by[s, "coordinated"]["robots_lost"] > by[s, "independent"]["robots_lost"] for s in seeds)
-        fewer = sum(by[s, "coordinated"]["robots_lost"] < by[s, "independent"]["robots_lost"] for s in seeds)
-        print(
-            f"- {name}, paired by seed: the team assembles with the radio on and not off on {win} seeds, the "
-            f"reverse on {lose}. Radio on loses more robots on {more} seeds and fewer on {fewer}."
-        )
-    print()
+        d0 = files[0][1]
+        print(f"### Fleet search, {title}\n")
+        print(f"{d0['robots']} robots, snow mu {d0['snow_mu']}, ice mu {d0['ice_mu']}, three ice patches. Every row is the same seeds.\n")
+        print("| slip reflex | radio | beacon located | dig team assembled | robots lost per mission | median s to locate | median s to assemble |")
+        print("|---|---|---|---|---|---|---|")
+        for name, d in files:
+            for mode, sm in d["summary"].items():
+                print(
+                    f"| {name} | {'on' if mode == 'coordinated' else 'off'} | {sm['located']}/{sm['missions']} | "
+                    f"{sm['assembled']}/{sm['missions']} | {sm['robots_lost_mean']:.2f} | "
+                    f"{sm['t_located_median_s'] if sm['t_located_median_s'] is not None else '-'} | "
+                    f"{sm['t_assembled_median_s'] if sm['t_assembled_median_s'] is not None else '-'} |"
+                )
+        print()
+        for name, d in files:
+            fails = [r for r in d["rows"] if r["mode"] == "coordinated" and not r["assembled"]]
+            if fails:
+                why = ", ".join(
+                    f"seed {r['seed']} ({'lost ' + str(r['robots_lost']) if r['robots_lost'] >= 2 else 'not located' if not r['located'] else 'timed out' if r['duration_s'] >= 99 else 'stalled'})"
+                    for r in fails
+                )
+                print(f"- Reflex {name}, radio on, did not assemble: {why}.")
+        print()
 
 
 if __name__ == "__main__":
