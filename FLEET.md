@@ -18,6 +18,14 @@ Three patches of ice lie under the snow, about 5 % of the field, and nobody can
 see them. This policy cannot walk on ice: the single-robot sweep puts its limit
 at friction 0.15 to 0.2, the snow here is 0.4 and the ice 0.08.
 
+![One mission, seed 25, reflex and radio on](demo/newton_fleet_reflex_contact_sheet.png)
+
+One mission, seed 25, a frame every ten seconds. At 10 s the second robot from
+the left feels ice and backs off (cyan), and the patch it reported gets an
+orange keep-out ring that the others walk round. At 46.1 s the beacon is
+pinpointed and three robots close in on it. This is one seed and an
+illustration, not a measurement; the results are in the tables below.
+
 ## How the team is built
 
 **Each robot is its own agent.** It knows its own pose, its own transceiver
