@@ -1,0 +1,756 @@
+{
+ "robots": 4,
+ "field": [
+  0.0,
+  12.0,
+  0.0,
+  14.0
+ ],
+ "sense_range": 2.0,
+ "ice_mu": 0.08,
+ "snow_mu": 0.4,
+ "reflex": true,
+ "seed_start": 20,
+ "summary": {
+  "coordinated": {
+   "missions": 20,
+   "located": 19,
+   "assembled": 19,
+   "robots_lost_mean": 0.15,
+   "coverage_mean": 0.795,
+   "t_located_median_s": 36.6,
+   "t_assembled_median_s": 45.6
+  },
+  "independent": {
+   "missions": 20,
+   "located": 20,
+   "assembled": 1,
+   "robots_lost_mean": 0.2,
+   "coverage_mean": 0.923,
+   "t_located_median_s": 30.1,
+   "t_assembled_median_s": 59.6
+  }
+ },
+ "rows": [
+  {
+   "seed": 20,
+   "mode": "coordinated",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 44.3,
+   "locate_error_m": 0.03,
+   "assembled": true,
+   "t_assembled_s": 53.5,
+   "robots_lost": 0,
+   "coverage": 0.996,
+   "messages": 1776,
+   "duration_s": 53.5,
+   "beacon": [
+    1.29,
+    12.09
+   ]
+  },
+  {
+   "seed": 20,
+   "mode": "independent",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 43.9,
+   "locate_error_m": 0.04,
+   "assembled": false,
+   "t_assembled_s": null,
+   "robots_lost": 1,
+   "coverage": 0.952,
+   "messages": 0,
+   "duration_s": 47.2,
+   "beacon": [
+    1.29,
+    12.09
+   ]
+  },
+  {
+   "seed": 21,
+   "mode": "coordinated",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 62.8,
+   "locate_error_m": 0.03,
+   "assembled": true,
+   "t_assembled_s": 67.5,
+   "robots_lost": 0,
+   "coverage": 0.996,
+   "messages": 1829,
+   "duration_s": 67.5,
+   "beacon": [
+    7.82,
+    10.89
+   ]
+  },
+  {
+   "seed": 21,
+   "mode": "independent",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 53.3,
+   "locate_error_m": 0.04,
+   "assembled": false,
+   "t_assembled_s": null,
+   "robots_lost": 0,
+   "coverage": 0.979,
+   "messages": 0,
+   "duration_s": 56.6,
+   "beacon": [
+    7.82,
+    10.89
+   ]
+  },
+  {
+   "seed": 22,
+   "mode": "coordinated",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 32.1,
+   "locate_error_m": 0.06,
+   "assembled": true,
+   "t_assembled_s": 49.2,
+   "robots_lost": 0,
+   "coverage": 0.824,
+   "messages": 2096,
+   "duration_s": 49.2,
+   "beacon": [
+    1.02,
+    11.34
+   ]
+  },
+  {
+   "seed": 22,
+   "mode": "independent",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 29.2,
+   "locate_error_m": 0.01,
+   "assembled": false,
+   "t_assembled_s": null,
+   "robots_lost": 1,
+   "coverage": 0.949,
+   "messages": 0,
+   "duration_s": 48.7,
+   "beacon": [
+    1.02,
+    11.34
+   ]
+  },
+  {
+   "seed": 23,
+   "mode": "coordinated",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 30.6,
+   "locate_error_m": 0.06,
+   "assembled": true,
+   "t_assembled_s": 31.9,
+   "robots_lost": 0,
+   "coverage": 0.582,
+   "messages": 947,
+   "duration_s": 31.9,
+   "beacon": [
+    5.18,
+    7.25
+   ]
+  },
+  {
+   "seed": 23,
+   "mode": "independent",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 30.5,
+   "locate_error_m": 0.03,
+   "assembled": false,
+   "t_assembled_s": null,
+   "robots_lost": 0,
+   "coverage": 0.939,
+   "messages": 0,
+   "duration_s": 48.8,
+   "beacon": [
+    5.18,
+    7.25
+   ]
+  },
+  {
+   "seed": 24,
+   "mode": "coordinated",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 24.8,
+   "locate_error_m": 0.03,
+   "assembled": true,
+   "t_assembled_s": 30.6,
+   "robots_lost": 0,
+   "coverage": 0.656,
+   "messages": 1156,
+   "duration_s": 30.6,
+   "beacon": [
+    6.24,
+    8.54
+   ]
+  },
+  {
+   "seed": 24,
+   "mode": "independent",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 23.6,
+   "locate_error_m": 0.05,
+   "assembled": false,
+   "t_assembled_s": null,
+   "robots_lost": 0,
+   "coverage": 0.866,
+   "messages": 0,
+   "duration_s": 58.6,
+   "beacon": [
+    6.24,
+    8.54
+   ]
+  },
+  {
+   "seed": 25,
+   "mode": "coordinated",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 46.1,
+   "locate_error_m": 0.01,
+   "assembled": true,
+   "t_assembled_s": 51.1,
+   "robots_lost": 0,
+   "coverage": 0.993,
+   "messages": 1529,
+   "duration_s": 51.1,
+   "beacon": [
+    5.94,
+    12.95
+   ]
+  },
+  {
+   "seed": 25,
+   "mode": "independent",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 34.6,
+   "locate_error_m": 0.02,
+   "assembled": false,
+   "t_assembled_s": null,
+   "robots_lost": 0,
+   "coverage": 0.999,
+   "messages": 0,
+   "duration_s": 51.1,
+   "beacon": [
+    5.94,
+    12.95
+   ]
+  },
+  {
+   "seed": 26,
+   "mode": "coordinated",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 38.4,
+   "locate_error_m": 0.06,
+   "assembled": true,
+   "t_assembled_s": 44.9,
+   "robots_lost": 0,
+   "coverage": 0.869,
+   "messages": 1473,
+   "duration_s": 44.9,
+   "beacon": [
+    4.98,
+    11.33
+   ]
+  },
+  {
+   "seed": 26,
+   "mode": "independent",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 63.5,
+   "locate_error_m": 0.05,
+   "assembled": false,
+   "t_assembled_s": null,
+   "robots_lost": 0,
+   "coverage": 0.988,
+   "messages": 0,
+   "duration_s": 66.8,
+   "beacon": [
+    4.98,
+    11.33
+   ]
+  },
+  {
+   "seed": 27,
+   "mode": "coordinated",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 37.5,
+   "locate_error_m": 0.07,
+   "assembled": true,
+   "t_assembled_s": 48.8,
+   "robots_lost": 0,
+   "coverage": 0.875,
+   "messages": 1799,
+   "duration_s": 48.8,
+   "beacon": [
+    9.06,
+    10.86
+   ]
+  },
+  {
+   "seed": 27,
+   "mode": "independent",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 29.6,
+   "locate_error_m": 0.02,
+   "assembled": false,
+   "t_assembled_s": null,
+   "robots_lost": 1,
+   "coverage": 0.866,
+   "messages": 0,
+   "duration_s": 37.4,
+   "beacon": [
+    9.06,
+    10.86
+   ]
+  },
+  {
+   "seed": 28,
+   "mode": "coordinated",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 51.4,
+   "locate_error_m": 0.08,
+   "assembled": true,
+   "t_assembled_s": 60.5,
+   "robots_lost": 0,
+   "coverage": 0.902,
+   "messages": 1899,
+   "duration_s": 60.5,
+   "beacon": [
+    9.86,
+    11.37
+   ]
+  },
+  {
+   "seed": 28,
+   "mode": "independent",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 55.5,
+   "locate_error_m": 0.04,
+   "assembled": false,
+   "t_assembled_s": null,
+   "robots_lost": 0,
+   "coverage": 0.97,
+   "messages": 0,
+   "duration_s": 58.8,
+   "beacon": [
+    9.86,
+    11.37
+   ]
+  },
+  {
+   "seed": 29,
+   "mode": "coordinated",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 40.8,
+   "locate_error_m": 0.01,
+   "assembled": true,
+   "t_assembled_s": 45.6,
+   "robots_lost": 0,
+   "coverage": 0.807,
+   "messages": 1463,
+   "duration_s": 45.6,
+   "beacon": [
+    3.03,
+    9.92
+   ]
+  },
+  {
+   "seed": 29,
+   "mode": "independent",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 27.5,
+   "locate_error_m": 0.02,
+   "assembled": false,
+   "t_assembled_s": null,
+   "robots_lost": 0,
+   "coverage": 0.92,
+   "messages": 0,
+   "duration_s": 45.1,
+   "beacon": [
+    3.03,
+    9.92
+   ]
+  },
+  {
+   "seed": 30,
+   "mode": "coordinated",
+   "reflex": true,
+   "located": false,
+   "t_located_s": null,
+   "locate_error_m": null,
+   "assembled": false,
+   "t_assembled_s": null,
+   "robots_lost": 0,
+   "coverage": 0.955,
+   "messages": 1456,
+   "duration_s": 72.5,
+   "beacon": [
+    3.91,
+    6.47
+   ]
+  },
+  {
+   "seed": 30,
+   "mode": "independent",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 30.1,
+   "locate_error_m": 0.02,
+   "assembled": false,
+   "t_assembled_s": null,
+   "robots_lost": 0,
+   "coverage": 0.933,
+   "messages": 0,
+   "duration_s": 37.4,
+   "beacon": [
+    3.91,
+    6.47
+   ]
+  },
+  {
+   "seed": 31,
+   "mode": "coordinated",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 45.9,
+   "locate_error_m": 0.02,
+   "assembled": true,
+   "t_assembled_s": 51.3,
+   "robots_lost": 0,
+   "coverage": 0.909,
+   "messages": 1557,
+   "duration_s": 51.3,
+   "beacon": [
+    5.35,
+    11.92
+   ]
+  },
+  {
+   "seed": 31,
+   "mode": "independent",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 30.9,
+   "locate_error_m": 0.02,
+   "assembled": false,
+   "t_assembled_s": null,
+   "robots_lost": 0,
+   "coverage": 0.961,
+   "messages": 0,
+   "duration_s": 57.3,
+   "beacon": [
+    5.35,
+    11.92
+   ]
+  },
+  {
+   "seed": 32,
+   "mode": "coordinated",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 36.6,
+   "locate_error_m": 0.03,
+   "assembled": true,
+   "t_assembled_s": 45.7,
+   "robots_lost": 1,
+   "coverage": 0.749,
+   "messages": 1598,
+   "duration_s": 45.7,
+   "beacon": [
+    1.46,
+    8.84
+   ]
+  },
+  {
+   "seed": 32,
+   "mode": "independent",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 36.0,
+   "locate_error_m": 0.02,
+   "assembled": false,
+   "t_assembled_s": null,
+   "robots_lost": 0,
+   "coverage": 0.945,
+   "messages": 0,
+   "duration_s": 64.0,
+   "beacon": [
+    1.46,
+    8.84
+   ]
+  },
+  {
+   "seed": 33,
+   "mode": "coordinated",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 29.8,
+   "locate_error_m": 0.03,
+   "assembled": true,
+   "t_assembled_s": 43.7,
+   "robots_lost": 1,
+   "coverage": 0.674,
+   "messages": 1792,
+   "duration_s": 43.7,
+   "beacon": [
+    2.81,
+    8.0
+   ]
+  },
+  {
+   "seed": 33,
+   "mode": "independent",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 22.8,
+   "locate_error_m": 0.02,
+   "assembled": true,
+   "t_assembled_s": 59.6,
+   "robots_lost": 1,
+   "coverage": 0.683,
+   "messages": 0,
+   "duration_s": 59.6,
+   "beacon": [
+    2.81,
+    8.0
+   ]
+  },
+  {
+   "seed": 34,
+   "mode": "coordinated",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 19.6,
+   "locate_error_m": 0.03,
+   "assembled": true,
+   "t_assembled_s": 30.9,
+   "robots_lost": 1,
+   "coverage": 0.534,
+   "messages": 1336,
+   "duration_s": 30.9,
+   "beacon": [
+    10.63,
+    6.88
+   ]
+  },
+  {
+   "seed": 34,
+   "mode": "independent",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 18.6,
+   "locate_error_m": 0.03,
+   "assembled": false,
+   "t_assembled_s": null,
+   "robots_lost": 0,
+   "coverage": 0.915,
+   "messages": 0,
+   "duration_s": 61.4,
+   "beacon": [
+    10.63,
+    6.88
+   ]
+  },
+  {
+   "seed": 35,
+   "mode": "coordinated",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 20.1,
+   "locate_error_m": 0.01,
+   "assembled": true,
+   "t_assembled_s": 22.6,
+   "robots_lost": 0,
+   "coverage": 0.583,
+   "messages": 819,
+   "duration_s": 22.6,
+   "beacon": [
+    4.81,
+    7.16
+   ]
+  },
+  {
+   "seed": 35,
+   "mode": "independent",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 19.3,
+   "locate_error_m": 0.02,
+   "assembled": false,
+   "t_assembled_s": null,
+   "robots_lost": 0,
+   "coverage": 0.979,
+   "messages": 0,
+   "duration_s": 49.2,
+   "beacon": [
+    4.81,
+    7.16
+   ]
+  },
+  {
+   "seed": 36,
+   "mode": "coordinated",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 31.2,
+   "locate_error_m": 0.02,
+   "assembled": true,
+   "t_assembled_s": 35.2,
+   "robots_lost": 0,
+   "coverage": 0.903,
+   "messages": 1142,
+   "duration_s": 35.2,
+   "beacon": [
+    7.79,
+    11.77
+   ]
+  },
+  {
+   "seed": 36,
+   "mode": "independent",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 30.0,
+   "locate_error_m": 0.03,
+   "assembled": false,
+   "t_assembled_s": null,
+   "robots_lost": 0,
+   "coverage": 0.994,
+   "messages": 0,
+   "duration_s": 50.4,
+   "beacon": [
+    7.79,
+    11.77
+   ]
+  },
+  {
+   "seed": 37,
+   "mode": "coordinated",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 45.7,
+   "locate_error_m": 0.03,
+   "assembled": true,
+   "t_assembled_s": 66.2,
+   "robots_lost": 0,
+   "coverage": 0.963,
+   "messages": 2606,
+   "duration_s": 66.2,
+   "beacon": [
+    1.78,
+    12.89
+   ]
+  },
+  {
+   "seed": 37,
+   "mode": "independent",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 32.6,
+   "locate_error_m": 0.04,
+   "assembled": false,
+   "t_assembled_s": null,
+   "robots_lost": 0,
+   "coverage": 0.997,
+   "messages": 0,
+   "duration_s": 50.0,
+   "beacon": [
+    1.78,
+    12.89
+   ]
+  },
+  {
+   "seed": 38,
+   "mode": "coordinated",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 22.7,
+   "locate_error_m": 0.04,
+   "assembled": true,
+   "t_assembled_s": 31.9,
+   "robots_lost": 0,
+   "coverage": 0.671,
+   "messages": 1355,
+   "duration_s": 31.9,
+   "beacon": [
+    8.77,
+    7.66
+   ]
+  },
+  {
+   "seed": 38,
+   "mode": "independent",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 21.7,
+   "locate_error_m": 0.06,
+   "assembled": false,
+   "t_assembled_s": null,
+   "robots_lost": 0,
+   "coverage": 0.851,
+   "messages": 0,
+   "duration_s": 48.8,
+   "beacon": [
+    8.77,
+    7.66
+   ]
+  },
+  {
+   "seed": 39,
+   "mode": "coordinated",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 16.0,
+   "locate_error_m": 0.03,
+   "assembled": true,
+   "t_assembled_s": 25.5,
+   "robots_lost": 0,
+   "coverage": 0.466,
+   "messages": 1228,
+   "duration_s": 25.5,
+   "beacon": [
+    10.21,
+    5.52
+   ]
+  },
+  {
+   "seed": 39,
+   "mode": "independent",
+   "reflex": true,
+   "located": true,
+   "t_located_s": 15.5,
+   "locate_error_m": 0.05,
+   "assembled": false,
+   "t_assembled_s": null,
+   "robots_lost": 0,
+   "coverage": 0.771,
+   "messages": 0,
+   "duration_s": 37.4,
+   "beacon": [
+    10.21,
+    5.52
+   ]
+  }
+ ]
+}

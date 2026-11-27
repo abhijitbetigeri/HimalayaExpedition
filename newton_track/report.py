@@ -130,8 +130,9 @@ def fleet():
     """Paired fleet missions: radio on vs off, without and with the slip reflex,
     on the seeds the planner was debugged on and on seeds it never saw."""
     sets = [
-        ("seeds 0-19 (planner debugged on these)", "fleet_search.json", "fleet_search_reflex.json"),
-        ("seeds 20-39 (held out)", "fleet_search_from20.json", "fleet_search_reflex_from20.json"),
+        ("seeds 60-79 (held out: nothing was tuned on these)", "fleet_search_from60.json", "fleet_search_reflex_from60.json"),
+        ("seeds 0-19 (used to debug the planner)", "fleet_search.json", "fleet_search_reflex.json"),
+        ("seeds 20-39 (used to debug the planner)", "fleet_search_from20.json", "fleet_search_reflex_from20.json"),
     ]
     for title, plain, reflex in sets:
         files = [(n, load(f)) for n, f in (("off", plain), ("on", reflex))]

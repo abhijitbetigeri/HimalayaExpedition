@@ -52,6 +52,8 @@ this.
 
 | `newton_track/` | A third stack on the Newton engine (added 2026-11-26): a deterministic CPU sweep of the Newton-shipped G1 policy over calibrated friction, wind and slope, cross-checked under Skild's Steel solver, plus an MPM snow scene that is not yet a result. Own environment, own doc: **read `NEWTON_TRACK.md`**. |
 
+| `newton_track/fleet_*.py` | A team of four G1s running an avalanche search on a snowfield with hidden ice (added 2026-11-27): each robot its own agent, a broadcast bus, a slip reflex that feels ice, a path planner. **Read `FLEET.md`**, including which seeds may be used to score it. |
+
 They compose: `PatchyIceJoystick` → `WindyJoystick` → stock `Joystick`, with
 `ice_randomize` supplying the per-episode model randomization underneath.
 Verified working together under the brax wrapper.
