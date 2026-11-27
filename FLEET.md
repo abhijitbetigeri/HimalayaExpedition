@@ -66,6 +66,7 @@ npy newton_track/fleet_sim.py                              # measured snow and i
 npy newton_track/fleet_reflex.py                           # reflex tables (slow)
 npy newton_track/fleet_search.py --seeds 20 --seed-start 60 --reflex   # 25 min
 npy newton_track/fleet_search.py --film 25 --reflex        # one mission to demo/, needs a display
+npy newton_track/fleet_comms.py --help                     # radio and team-size studies (hours)
 npy newton_track/report.py                                 # regenerate the tables below
 ```
 
@@ -76,6 +77,7 @@ npy newton_track/report.py                                 # regenerate the tabl
 | `fleet_reflex.py` | The slip reflex and its own evaluation. |
 | `fleet_search.py` | The mission: agents, bus, path planner, scoring, paired evaluation. |
 | `test_fleet_route.py` | Ten geometry cases for the planner, each a shape that broke an earlier version in a real mission. |
+| `fleet_comms.py` | `LossyBus` (packet loss, range limit), candidate agent variants, and the radio and team-size studies. |
 | `film_fleet.py` | Wide-shot renderer: snow, footprints, the beacon, mapped hazards, radio links, role markers. Rendering only. |
 
 ## Results
@@ -155,6 +157,106 @@ other two sets are shown so the gap between tuned-on and untouched is visible.
 - **One unexplained failure**: seed 30, radio and reflex on, nobody lost, beacon
   never located in 72.5 s. Not traced.
 
+## How much radio, and how many robots
+
+Two studies by a separate agent (`fleet_comms.py`), 324 missions on a frozen
+copy of the planner commit, seeds 40-51, twelve per cell, the same seeds in
+every cell. `LossyBus` drops each message to each receiver independently with
+probability p, or delivers only within a range. Twelve seeds is few: read
+differences of one mission as nothing.
+
+<!-- BEGIN GENERATED (newton_track/report.py, studies section) -->
+
+### Radio study (4 robots, slip reflex on, seeds 40-51, commit 928f08f)
+
+Medians are over the missions that assembled.
+
+| cell | located | assembled | robots lost per mission | median s to assemble | sweep time in the wrong lane |
+|---|---|---|---|---|---|
+| loss 0 | 12/12 | 11/12 | 0.33 | 25.5 | 0 % |
+| loss 0.5 | 12/12 | 12/12 | 0.17 | 27.0 | 2 % |
+| loss 0.8 | 12/12 | 11/12 | 0.25 | 28.2 | 47 % |
+| loss 0.95 | 8/12 | 8/12 | 0.08 | 31.4 | 88 % |
+| range 5 m | 12/12 | 12/12 | 0.00 | 25.3 | 59 % |
+| range 3 m | 12/12 | 5/12 | 0.17 | 21.2 | 77 % |
+| independent | 12/12 | 0/12 | 0.08 | - | - |
+
+Candidate agent changes, same seeds and radio:
+
+| cell | located | assembled | robots lost per mission | median s to assemble | sweep time in the wrong lane |
+|---|---|---|---|---|---|
+| loss 0.8 +memory | 12/12 | 12/12 | 0.08 | 28.3 | 5 % |
+| loss 0.8 +patient | 12/12 | 12/12 | 0.00 | 28.4 | 5 % |
+| range 5 m +relay | 12/12 | 12/12 | 0.08 | 26.4 | 2 % |
+| loss 0.95 +memory | 12/12 | 11/12 | 0.33 | 30.4 | 44 % |
+| loss 0.95 +patient | 12/12 | 12/12 | 0.33 | 29.5 | 40 % |
+| range 3 m +relay | 12/12 | 11/12 | 0.00 | 26.4 | 25 % |
+| loss 0 +relay | 12/12 | 11/12 | 0.33 | 25.5 | 0 % |
+| loss 0.95 +steady | 12/12 | 12/12 | 0.08 | 29.2 | 16 % |
+| loss 0.8 +steady | 12/12 | 12/12 | 0.08 | 28.2 | 2 % |
+| loss 0 +steady | 12/12 | 12/12 | 0.00 | 25.9 | 0 % |
+
+### Team size (seeds 40-51, commit 928f08f)
+
+| cell | located | assembled | robots lost per mission | median s to assemble | robot-metres walked |
+|---|---|---|---|---|---|
+| n=3 coordinated | 12/12 | 11/12 | 0.08 | 41.3 | 37 |
+| n=4 coordinated | 12/12 | 11/12 | 0.33 | 25.5 | 41 |
+| n=5 coordinated | 12/12 | 12/12 | 0.00 | 23.9 | 53 |
+| n=6 coordinated | 12/12 | 12/12 | 0.17 | 24.8 | 62 |
+| n=4 coordinated, no reflex | 12/12 | 9/12 | 0.83 | 25.2 | 38 |
+| n=6 coordinated, no reflex | 12/12 | 12/12 | 1.08 | 24.8 | 56 |
+| n=3 independent | 12/12 | 0/12 | 0.17 | - | 42 |
+| n=5 independent | 12/12 | 0/12 | 0.00 | - | 74 |
+| n=6 independent | 12/12 | 1/12 | 0.00 | 46.0 | 90 |
+| n=4 independent | 12/12 | 0/12 | 0.08 | - | 62 |
+
+<!-- END GENERATED -->
+
+**Radio.**
+
+- **The team tolerates losing four packets in five.** Up to 80 % loss costs a
+  few seconds and no missions. Heartbeats at 5 Hz and SIGNAL repeated every tick
+  give it that margin.
+- **It breaks at 95 % loss, and the cause is the teammate-timeout, not a lost
+  one-shot message.** A robot that has not heard a teammate for 1.5 s treats it
+  as gone. At 95 % loss that happens to live teammates 68 % of the time, a robot
+  that hears nobody takes the whole field as its lane, and all four head for the
+  middle: on four seeds the beacon near the field edge was never found, where
+  the radio-off robots found it on all twelve. So a bad radio was worse than no
+  radio. "Sweep time in the wrong lane" tracks this: 0 %, 2 %, 47 %, 88 %.
+- **A dropped FOUND broke nothing.** It was missed by a teammate in almost every
+  lossy mission, and SIGNAL covers for it.
+- **A 3 m range fails for a different reason: nothing is relayed.** Two robots
+  out of earshot never hear SIGNAL or FOUND and park at the top of the field.
+- **Dig-slot claims do conflict under heavy loss** (two helpers claiming the same
+  or neighbouring position for over a second in 7 of 12 missions at 80 % loss
+  and in every mission that reached the dig at 95 %). No assembly was lost to it.
+- **Smallest change that holds up: remember a silent teammate for 10 s instead
+  of 1.5 s**, while still pacing only against fresh heartbeats (`+memory`). At
+  95 % loss it takes located from 8/12 to 12/12. `+patient` adds repeating DOWN
+  and HAZARD and is not distinguishable from it on twelve seeds. `+relay` is what
+  a 3 m range needs (5/12 to 11/12) and is a bigger edit. `+steady` has the best
+  lanes at 95 % but changes behaviour on a clean radio, so it was not taken.
+
+**Team size.**
+
+- **With the reflex on there is almost nothing left for spare robots to buy.**
+  Four robots fail one mission in twelve here; a fifth buys it back; a sixth adds
+  nothing but walking.
+- **Three robots are slower, not less reliable**: 41 s to assemble against 26 s.
+  With no spare, one fall ends the mission.
+- **Without the reflex, spares matter**: six robots assemble 12/12 where four
+  manage 9/12, at the price of more robots lost (1.08 against 0.83 a mission).
+  Three discordant seeds, so suggestive only.
+
+Known and unfixed on that commit, with the seed that shows it: a pinpointing
+robot keeps advertising a dig slot it claimed earlier as a helper (loss 0.95
+seed 50); one residual repeat on a mapped patch that ended with two robots down
+(loss 0.8 seed 49, 1 mission in 204); and every robot lost on a clean radio in
+these studies went down during the reflex's own back-out, one of them more than
+0.6 m outside any patch.
+
 ## What went wrong on the way, and what it taught
 
 The first planner stepped to one side of the first hazard in its way. It failed
@@ -204,8 +306,8 @@ Other things the missions exposed:
   and a robot that meets ice while turning or standing were not tested.
 - **The world is flat and the sensor is simple.** No slope, no wind, a
   transceiver with clean range and bearing inside 2 m and nothing outside it.
-- **The radio is perfect** in these tables. Packet loss and range limits are a
-  separate study, in progress.
+- **The radio is perfect** in the main tables. Under 95 % packet loss or a 3 m
+  range the team as committed fails; see the radio study.
 - **No robot gets up.** Every loss is permanent.
-- **Four robots, one field size, one ice density.** Team-size effects are a
-  separate study, in progress.
+- **One field size, one ice density.** Team size was varied from three to six
+  on the same field only.

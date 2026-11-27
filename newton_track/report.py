@@ -164,6 +164,48 @@ def fleet():
         print()
 
 
+def _study_table(rows: list, cells: list, extra=None):
+    head = "| cell | located | assembled | robots lost per mission | median s to assemble |" + (f" {extra[0]} |" if extra else "")
+    print(head)
+    print("|---|---|---|---|---|" + ("---|" if extra else ""))
+    for c in cells:
+        g = [r for r in rows if r["cell"] == c]
+        if not g:
+            continue
+        t = [r["t_assembled_s"] for r in g if r["assembled"]]
+        line = (
+            f"| {c} | {sum(r['located'] for r in g)}/{len(g)} | {sum(r['assembled'] for r in g)}/{len(g)} | "
+            f"{st.mean(r['robots_lost'] for r in g):.2f} | {f'{st.median(t):.1f}' if t else '-'} |"
+        )
+        print(line + (f" {extra[1](g)} |" if extra else ""))
+    print()
+
+
+def fleet_studies():
+    """Radio degradation and team size (fleet_comms.py). Seeds 40-51, 12 per cell."""
+    comms, scale = load("fleet_comms.json"), load("fleet_scale.json")
+
+    def wrong_lane(g):
+        sweep = sum(r.get("sweep_ticks") or 0 for r in g)
+        return f"{100 * sum(r.get('lane_wrong_ticks') or 0 for r in g) / sweep:.0f} %" if sweep else "-"
+
+    if comms:
+        rows = comms["rows"]
+        print(f"### Radio study (4 robots, slip reflex on, seeds 40-51, commit {comms['commits'][0][:7]})\n")
+        print("Medians are over the missions that assembled.\n")
+        _study_table(rows, ["loss 0", "loss 0.5", "loss 0.8", "loss 0.95", "range 5 m", "range 3 m", "independent"],
+                     ("sweep time in the wrong lane", wrong_lane))
+        print("Candidate agent changes, same seeds and radio:\n")
+        stock = {"loss 0", "loss 0.5", "loss 0.8", "loss 0.95", "range 5 m", "range 3 m", "independent"}
+        _study_table(rows, [c for c in dict.fromkeys(r["cell"] for r in rows) if c not in stock],
+                     ("sweep time in the wrong lane", wrong_lane))
+    if scale:
+        rows = scale["rows"]
+        print(f"### Team size (seeds 40-51, commit {scale['commits'][0][:7]})\n")
+        _study_table(rows, list(dict.fromkeys(r["cell"] for r in rows)),
+                     ("robot-metres walked", lambda g: f"{st.mean(r['robot_metres'] for r in g):.0f}"))
+
+
 if __name__ == "__main__":
     cal = load("friction_calibration.json")
     if cal:
@@ -179,3 +221,4 @@ if __name__ == "__main__":
     sweep("speed", "command_vx", "m/s", "ice_sweep_mujoco_elliptic_speed.json")
     snow()
     fleet()
+    fleet_studies()
