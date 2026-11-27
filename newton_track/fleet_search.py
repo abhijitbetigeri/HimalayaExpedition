@@ -171,76 +171,144 @@ def steer(pose, target, v_max: float, stop_within: float = 0.25) -> tuple[float,
     return float(v), 0.0, wz
 
 
-def route(pos, target, hazards, clearance: float = 0.45, memory: dict | None = None, teammates=()):
-    """Next point to walk to: `target`, or a waypoint that passes the obstacles in the way.
+def _seg_dist(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> np.ndarray:
+    """Distance from each centre c[k] to each segment a[i]-b[i]. Shapes (m, 2), (m, 2), (h, 2) -> (m, h)."""
+    ab = b - a
+    denom = np.maximum((ab * ab).sum(axis=1), 1e-12)
+    ac = c[None, :, :] - a[:, None, :]
+    t = np.clip((ac * ab[:, None, :]).sum(axis=2) / denom[:, None], 0.0, 1.0)
+    closest = a[:, None, :] + t[:, :, None] * ab[:, None, :]
+    return np.linalg.norm(c[None, :, :] - closest, axis=2)
 
-    `obstacles` are discs (x, y, r). The ones blocking the straight line are
-    grown into a cluster with every disc that touches them, and the whole
-    cluster is passed on ONE side. `memory` (per agent) remembers which side
-    was chosen for each disc, so the choice survives replanning every tick.
-    Without it a robot facing two discs side by side picked left, then right,
-    then left, for 36 seconds, and ended up back on the ice (seed 8).
+
+def plan_path(start, goal, discs, ring: int = 12, ring_gap: float = 0.15):
+    """Shortest path from start to goal that stays out of every disc (x, y, R).
+
+    A small visibility graph: the nodes are start, goal and `ring` points just
+    outside each disc; two nodes are joined only if the whole straight leg
+    between them clears every disc. Returns the list of points after `start`,
+    or None if there is no way through.
+
+    A start that is already inside a disc (a robot that has just backed off
+    ice stands inside that hazard's keep-out zone) may leave, but may not go
+    deeper: on legs from the start, each disc counts only up to the start's own
+    distance from its centre.
     """
-    px, py = pos
+    s, g = np.asarray(start, dtype=float), np.asarray(goal, dtype=float)
+    if not discs:
+        return [tuple(g)]
+    c = np.array([[d[0], d[1]] for d in discs], dtype=float)
+    R = np.array([d[2] for d in discs], dtype=float)
+    R_from_start = np.minimum(R, np.linalg.norm(c - s, axis=1))
+    if (_seg_dist(s[None], g[None], c)[0] >= R_from_start - 1e-9).all():
+        return [tuple(g)]
+    ang = np.linspace(0.0, 2 * math.pi, ring, endpoint=False)
+    pts = (c[:, None, :] + (R[:, None, None] + ring_gap) * np.stack([np.cos(ang), np.sin(ang)], axis=1)[None]).reshape(-1, 2)
+    keep = (np.linalg.norm(pts[:, None, :] - c[None], axis=2) >= R[None] - 1e-9).all(axis=1)  # not inside another disc
+    nodes = np.vstack([s[None], g[None], pts[keep]])
+    n = len(nodes)
+    ii, jj = np.triu_indices(n, k=1)
+    dist = _seg_dist(nodes[ii], nodes[jj], c)
+    limit = np.where((ii == 0)[:, None], R_from_start[None], R[None])
+    ok = (dist >= limit - 1e-9).all(axis=1)
+    length = np.linalg.norm(nodes[ii] - nodes[jj], axis=1)
+    cost = np.full((n, n), np.inf)
+    cost[ii[ok], jj[ok]] = length[ok]
+    cost[jj[ok], ii[ok]] = length[ok]
+    best = np.full(n, np.inf)
+    best[0] = 0.0
+    prev = np.full(n, -1)
+    done = np.zeros(n, dtype=bool)
+    for _ in range(n):  # Dijkstra on a dense matrix: n is a few dozen
+        u = int(np.argmin(np.where(done, np.inf, best)))
+        if not np.isfinite(best[u]) or u == 1:
+            break
+        done[u] = True
+        alt = best[u] + cost[u]
+        better = alt < best
+        best[better] = alt[better]
+        prev[better] = u
+    if not np.isfinite(best[1]):
+        return None
+    path, k = [], 1
+    while k != 0:
+        path.append((float(nodes[k][0]), float(nodes[k][1])))
+        k = int(prev[k])
+    return path[::-1]
+
+
+def keep_out_discs(target, hazards, teammates=(), clearance: float = 0.45) -> list:
+    """The discs route() plans around, for one target. See route() for the rules."""
     tx, ty = target
-    seg = np.array([tx - px, ty - py])
-    length = float(np.linalg.norm(seg))
-    # A hazard is never ignored. If the target lies inside one's keep-out zone
-    # (a beacon next to mapped ice), the zone shrinks just enough to leave the
-    # target reachable from the far side. A parked teammate beside the target IS
-    # ignored: dig slots are next to each other by design. An earlier version
-    # applied that teammate rule to hazards too, and since a sweep target is only
-    # 2.5 m ahead, ice dead ahead with the target just behind it was skipped: the
-    # robot backed off a patch and walked straight back in, every six seconds.
-    obstacles = []
+    discs = []
     for hx, hy, hr in hazards:
         d = math.hypot(hx - tx, hy - ty)
-        obstacles.append((hx, hy, min(hr, max(0.3, d - 0.2)) if d < hr + clearance else hr))
-    n_hard = len(obstacles)
-    obstacles += [o for o in teammates if math.hypot(o[0] - tx, o[1] - ty) > o[2] + clearance]
-    if length < 1e-6 or not obstacles:
+        full = hr + clearance
+        discs.append((hx, hy, min(full, max(0.3, d - 0.2)) if d < full else full))
+    discs += [(ox, oy, r + 0.3) for ox, oy, r in teammates if math.hypot(ox - tx, oy - ty) > r + clearance]
+    return discs
+
+
+def route(pos, target, hazards, clearance: float = 0.45, memory: dict | None = None, teammates=()):
+    """Next point to walk to: `target`, or the first leg of a path round what is in the way.
+
+    Hazards are inflated by `clearance` and are never ignored. If the target
+    lies inside a hazard's keep-out zone (a beacon next to mapped ice) the zone
+    shrinks just enough to leave the target reachable from the far side. A
+    parked teammate beside the target IS ignored: dig slots are next to each
+    other by design.
+
+    `memory` (per agent) holds the committed waypoint. It is kept until it is
+    reached or the leg to it stops being clear, so the plan does not flip sides
+    between ticks.
+
+    History, because two simpler versions failed in instructive ways. Version
+    one stepped to one side of the first disc in the way and remembered the
+    side: with two discs side by side it alternated for 36 s (seed 8), and a
+    newly found disc inherited the side remembered for the cluster it joined
+    even when the robot stood on the other side of it (seed 40: thirteen reflex
+    events on one patch). Neither version checked that the leg to its waypoint
+    was itself clear. Here that is a property of every edge in the graph.
+    """
+    discs = keep_out_discs(target, hazards, teammates, clearance)
+    if not discs:
         return target
-    u = seg / length
-    left = np.array([-u[1], u[0]])
-    geo = []  # (along, across, r, key) with across > 0 meaning the disc centre is left of the path
-    for ox, oy, r in obstacles:
-        rel = np.array([ox - px, oy - py])
-        geo.append((float(rel @ u), float(left @ rel), r, (round(ox, 2), round(oy, 2))))
-    blocking = [
-        k for k, (along, across, r, _key) in enumerate(geo)
-        if -r < along < length - (0.0 if k < n_hard else 0.2) and abs(across) < r + clearance
-    ]  # fmt: skip
-    if not blocking:
+    s = np.asarray(pos, dtype=float)
+    c = np.array([[d[0], d[1]] for d in discs])
+    # No slack here. With 5 cm of slack, re-applied every tick, a robot could
+    # ratchet 5 cm deeper into a keep-out zone per replan and walk through it.
+    R_from_here = np.minimum(np.array([d[2] for d in discs]), np.linalg.norm(c - s, axis=1))
+
+    def leg_clear(to) -> bool:
+        return bool((_seg_dist(s[None], np.asarray(to, dtype=float)[None], c)[0] >= R_from_here - 1e-9).all())
+
+    if leg_clear(target):
+        if memory is not None:
+            memory.pop("waypoint", None)
         return target
-    cluster = {min(blocking, key=lambda k: geo[k][0])}
-    grew = True
-    while grew:
-        grew = False
-        for k, (ox, oy, r) in enumerate(obstacles):
-            if k in cluster:
-                continue
-            if any(math.hypot(ox - obstacles[c][0], oy - obstacles[c][1]) < r + obstacles[c][2] + 2 * clearance for c in cluster):
-                cluster.add(k)
-                grew = True
-    margin = clearance + 0.3
-    go_left = max(geo[k][1] + geo[k][2] for k in cluster) + margin  # lateral offset that clears them all on the left
-    go_right = min(geo[k][1] - geo[k][2] for k in cluster) - margin
-    side = None
     if memory is not None:
-        side = next((memory[geo[k][3]] for k in cluster if geo[k][3] in memory), None)
-    if side is None:
-        side = "left" if abs(go_left) <= abs(go_right) else "right"
+        wp = memory.get("waypoint")
+        if wp is not None and math.hypot(wp[0] - pos[0], wp[1] - pos[1]) > 0.4 and leg_clear(wp):
+            return wp
+    path = plan_path(pos, target, discs)
+    if path is None:
+        # Boxed in. Head straight away from the nearest hazard and replan next tick.
+        k = int(np.argmin(np.linalg.norm(c - s, axis=1)))
+        away = s - c[k]
+        away = away / max(float(np.linalg.norm(away)), 1e-6)
+        wp = (float(s[0] + away[0]), float(s[1] + away[1]))
+    else:
+        wp = path[0]
+        # Do not hand back a node that is already underfoot when the leg to the
+        # next one is clear: the walking controller treats "within 25 cm" as
+        # arrived and would stand on it.
+        k = 0
+        while k + 1 < len(path) and math.hypot(path[k][0] - pos[0], path[k][1] - pos[1]) < 0.5 and leg_clear(path[k + 1]):
+            k += 1
+        wp = path[k]
     if memory is not None:
-        for k in cluster:
-            memory[geo[k][3]] = side
-    lateral = go_left if side == "left" else go_right
-    # Step sideways BEFORE the cluster's near edge, not beside its middle. Beside
-    # the middle, a robot that had just backed off ice left on a diagonal that
-    # clipped the same patch: seed 25 fired the reflex six times on one patch,
-    # 20 cm further along each time, and lost two robots doing it.
-    along = max(0.3, min(geo[k][0] - geo[k][2] for k in cluster))
-    w = np.array([px, py]) + u * along + left * lateral
-    return float(w[0]), float(w[1])
+        memory["waypoint"] = wp
+    return wp
 
 
 N_SLOTS = 12  # dig positions around the burial point; neighbours of a taken slot stay empty
@@ -263,7 +331,7 @@ class RobotAgent:
         self.holding = False
         self.stuck_ticks = 0
         self.slot = None  # index of the dig position this robot has claimed
-        self.sides = {}  # route() memory: which side each obstacle is passed on
+        self.sides = {}  # route() memory: the waypoint this robot is committed to
         self.yield_ticks = 0
 
     # ---- shared rules: every agent computes these from the same roster ----
@@ -396,8 +464,7 @@ class RobotAgent:
                     self.role = "hold"
                     return self._keep_station(me, self.found), out
                 self.role = "locate"
-                self.target = route(pos, goal, self.hazards, memory=self.sides)
-                cmd = steer(me, self.target, 0.35, stop_within=0.3)
+                cmd = self._go(me, goal, 0.35, 0.3)
                 close = reading is not None and reading[0] < 0.6
                 self.stuck_ticks = self.stuck_ticks + 1 if cmd[0] == 0.0 and abs(cmd[2]) < 0.2 else 0
                 if self.found is None and (close or (self.stuck_ticks > POLICY_HZ and reading is not None)):
@@ -411,8 +478,7 @@ class RobotAgent:
                 self.target = slot
                 return self._keep_station(me, slot), out
             self.role = "converge"
-            self.target = route(pos, slot, self.hazards, memory=self.sides, teammates=self._teammate_discs(t))
-            return self._yield_to_others(t, me, steer(me, self.target, V_SWEEP, stop_within=0.3)), out
+            return self._yield_to_others(t, me, self._go(me, slot, V_SWEEP, 0.3, self._teammate_discs(t))), out
 
         # -- sweep --
         if me[1] >= y1 - 0.3:
@@ -424,12 +490,23 @@ class RobotAgent:
         ahead_y = min(y1, me[1] + 2.5)
         while ahead_y < y1 and any(math.hypot(lane_x - hx, ahead_y - hy) < hr + 0.45 for hx, hy, hr in self.hazards):
             ahead_y = min(y1, ahead_y + 0.5)  # aim past mapped ice, never into it
-        self.target = route(pos, (lane_x, ahead_y), self.hazards, memory=self.sides)
         v = V_SWEEP
         if self.coordinated:
             ahead = me[1] - self._line_y(t, me)
             v = float(np.clip(V_SWEEP - 0.6 * ahead, 0.15, V_SWEEP))
-        return self._yield_to_others(t, me, steer(me, self.target, v)), out
+        return self._yield_to_others(t, me, self._go(me, (lane_x, ahead_y), v, 0.25)), out
+
+    def _go(self, me, goal, v_max: float, stop_within: float, teammates=()):
+        """Command toward `goal` round whatever is mapped in between.
+
+        `stop_within` applies to the goal only. An intermediate waypoint is
+        walked through, never stopped at: with one stop distance for both, a
+        robot handed a waypoint 20 cm away stood on it for 70 seconds (seed 25,
+        two robots at once, mission lost with nobody down).
+        """
+        self.target = route((me[0], me[1]), goal, self.hazards, memory=self.sides, teammates=teammates)
+        final = math.hypot(self.target[0] - goal[0], self.target[1] - goal[1]) < 1e-6
+        return steer(me, self.target, v_max, stop_within=stop_within if final else 0.0)
 
     def _arrived(self, pos, goal, enter: float, leave: float) -> bool:
         """Hold with hysteresis. A standing robot drifts a few centimetres a second;
