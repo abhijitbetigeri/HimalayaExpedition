@@ -7,7 +7,7 @@ speed, lateral speed, yaw rate. Nothing here decides where anyone goes. That is
 `fleet_search.py`.
 
 The ground is firm snow as a friction surface, with rectangular ice patches set
-flush into it. Snow here is NOT the MPM material from `snow_mpm.py`: a field
+into it. Snow here is NOT the MPM material from `snow_mpm.py`: a field
 this size at 5 cm voxels is a few hundred thousand particles, hours per episode
 on CPU, and that scene does not yet pass its own sanity check. What the fleet
 needs from the ground is the thing the single-robot sweep measured: this policy
@@ -16,6 +16,11 @@ walks at mu 0.2 and above and falls below 0.15.
 Ice patches use the same trick as the ground (`geom_priority`), one level up, so
 a foot on a patch gets the patch's friction outright. `check_patch_friction()`
 measures it with the sliding block.
+
+By default a patch stands 2 mm proud of the snow (`PATCH_TOP`), and the slip
+reflex leans on that lip (FLEET.md, "The reflex, looked at harder").
+`FleetSim(..., flush=True)` builds the ground level instead: see
+`add_flush_snowfield`. With `flush=False` the model is what it always was.
 """
 
 from __future__ import annotations
@@ -39,6 +44,7 @@ wp.config.quiet = True
 SNOW_MU = 0.4  # firm, settled snow under a boot
 ICE_MU = 0.08  # wind-polished ice. Below the policy's 0.15-0.2 cliff
 PATCH_TOP = 0.002  # patches stand 2 mm proud so a foot on one is not also on the snow
+FLUSH_PAD = 25.0  # m of snow laid beyond the robots and the patches when the ground is flush tiles
 SNOW_COLOR = (0.93, 0.95, 0.98)
 ICE_COLOR = (0.45, 0.70, 0.92)
 
@@ -96,8 +102,94 @@ def add_snowfield(builder: newton.ModelBuilder, patches: list[IcePatch], snow_mu
         )  # fmt: skip
 
 
+def flush_bounds(points, patches, pad: float = FLUSH_PAD) -> tuple[float, float, float, float]:
+    """xmin, xmax, ymin, ymax of the tiled ground: everything given, plus `pad` all round."""
+    xs = [p[0] for p in points] + [q.x - q.hx for q in patches] + [q.x + q.hx for q in patches]
+    ys = [p[1] for p in points] + [q.y - q.hy for q in patches] + [q.y + q.hy for q in patches]
+    return min(xs) - pad, max(xs) + pad, min(ys) - pad, max(ys) + pad
+
+
+def flush_tiles(patches: list[IcePatch], bounds) -> list[tuple[float, float, float, float, bool]]:
+    """Cut `bounds` into rectangles (x0, x1, y0, y1, is_ice) that are each all ice or all snow.
+
+    Bands in y between patch edges, each band cut in x where a patch starts or ends, then
+    neighbours of one kind merged, along a band and from band to band. A patch on its own comes
+    out as one tile with exactly its own edges (patches that touch or overlap come out as their
+    union), and the snow gets few seams: three separate patches make 13 tiles, where the plain
+    grid of every edge would make 49.
+    """
+    x_lo, x_hi, y_lo, y_hi = bounds
+
+    def is_ice(x, y):
+        return any(p.contains(x, y) for p in patches)
+
+    ys = sorted({y_lo, y_hi} | {v for p in patches for v in (p.y - p.hy, p.y + p.hy) if y_lo < v < y_hi})
+    done, open_ = [], {}  # open_: (x0, x1, ice) -> y0 of a tile still growing upward
+    for ya, yb in zip(ys[:-1], ys[1:]):
+        ym = 0.5 * (ya + yb)
+        xs = sorted({x_lo, x_hi} | {v for p in patches if abs(ym - p.y) <= p.hy for v in (p.x - p.hx, p.x + p.hx) if x_lo < v < x_hi})
+        row = []
+        for xa, xb in zip(xs[:-1], xs[1:]):
+            ice = is_ice(0.5 * (xa + xb), ym)
+            if row and row[-1][2] == ice:
+                row[-1] = (row[-1][0], xb, ice)
+            else:
+                row.append((xa, xb, ice))
+        for key in [k for k in open_ if k not in row]:
+            done.append((key[0], key[1], open_.pop(key), ya, key[2]))
+        for key in row:
+            open_.setdefault(key, ya)
+    done += [(k[0], k[1], y0, y_hi, k[2]) for k, y0 in open_.items()]
+    return sorted(done, key=lambda t: (t[2], t[0]))
+
+
+def add_flush_snowfield(builder: newton.ModelBuilder, patches: list[IcePatch], snow_mu: float, ice_mu: float, bounds):
+    """The same field with the ice FLUSH: no plane, coplanar boxes with every top at z = 0.
+
+    A flush ice box laid over the snow plane would not do. Whatever rests on both shares its
+    load between them, priorities or not, and most of it lands on the plane: the sliding block
+    on such a patch (`PATCH_TOP = 0`) measures 0.38 for a nominal 0.08. So the snow is boxes
+    too, cut round the patches (`flush_tiles`): a foot over the ice touches only ice, a foot
+    across an edge shares its load between the two sides. Same approach as
+    `fleet_reflex.flush_snowfield`, with fewer snow tiles.
+
+    The ground ends at `bounds`. Nothing holds a robot up beyond it, so `FleetSim.step` raises
+    if one walks off.
+
+    Priorities are as on the raised field: snow 1, ice 2, feet 0, so the ground's friction is
+    the one MuJoCo applies and not the larger of ground and sole.
+
+    The tiles are filtered against each other. They are static and could never collide, but
+    SolverMuJoCo colours shapes by who may touch whom and has 32 colours: unfiltered, every
+    tile takes one, and past 32 the masks fall back to "collides with anything".
+
+    The snow tiles are not drawn. `film_fleet.py` lays its own snow sheet at z = 0, where the
+    tile tops are; the ice boxes are drawn as on the raised field.
+    """
+    hz = 0.02
+    snow = newton.ModelBuilder.ShapeConfig(mu=snow_mu, ke=5.0e4, kd=5.0e2, kf=1.0e3, is_visible=False)
+    ice = newton.ModelBuilder.ShapeConfig(mu=ice_mu, ke=5.0e4, kd=5.0e2, kf=1.0e3)
+    shapes, n_snow, n_ice = [], 0, 0
+    for x0, x1, y0, y1, is_ice in flush_tiles(patches, bounds):
+        if is_ice:
+            label, n_ice = f"ice_{n_ice}", n_ice + 1
+        else:
+            label, n_snow = f"snow_{n_snow}", n_snow + 1
+        shapes.append(builder.add_shape_box(
+            body=-1, xform=wp.transform(wp.vec3(0.5 * (x0 + x1), 0.5 * (y0 + y1), -hz)), hx=0.5 * (x1 - x0), hy=0.5 * (y1 - y0), hz=hz,
+            cfg=ice if is_ice else snow, label=label, color=ICE_COLOR if is_ice else SNOW_COLOR,
+            custom_attributes={"mujoco:geom_priority": 2 if is_ice else 1},
+        ))  # fmt: skip
+    for i, a in enumerate(shapes):
+        for b in shapes[:i]:
+            builder.add_shape_collision_filter_pair(a, b)
+
+
 class FleetSim:
-    """N policy-driven G1s on a snowfield. One `step(commands)` is one 20 ms tick."""
+    """N policy-driven G1s on a snowfield. One `step(commands)` is one 20 ms tick.
+
+    `flush=True` sets the ice level with the snow instead of 2 mm proud (`add_flush_snowfield`).
+    `patches`, `IcePatch.contains` and `on_ice` mean the same either way."""
 
     def __init__(
         self,
@@ -108,9 +200,13 @@ class FleetSim:
         ice_mu: float = ICE_MU,
         seed: int = 0,
         body_collisions: bool = True,
+        flush: bool = False,
     ):
         self.n = len(starts)
         self.patches = list(patches)
+        self.flush = bool(flush)
+        # Where the ground ends: None on the raised field (the snow there is an unbounded plane).
+        self.ground_bounds = flush_bounds(starts, self.patches) if self.flush else None
         self.device = wp.get_device()
         asset_dir = newton.utils.download_asset("unitree_g1")
         with open(asset_dir / "rl_policies" / "g1_29dof.yaml", encoding="utf-8") as f:
@@ -158,7 +254,10 @@ class FleetSim:
         builder = new_builder()
         for _ in range(self.n):
             builder.add_builder(robot)
-        add_snowfield(builder, self.patches, snow_mu, ice_mu)
+        if self.flush:
+            add_flush_snowfield(builder, self.patches, snow_mu, ice_mu, self.ground_bounds)
+        else:
+            add_snowfield(builder, self.patches, snow_mu, ice_mu)
         self.nq, self.nv = 7 + nj, 6 + nj
         if builder.joint_coord_count != self.n * self.nq or builder.joint_dof_count != self.n * self.nv:
             raise RuntimeError(
@@ -266,6 +365,12 @@ class FleetSim:
         self._qd = self.state_0.joint_qd.numpy()
         self.t += 1
         self._update_slip()
+        if self.ground_bounds is not None:
+            x0, x1, y0, y1 = self.ground_bounds
+            for r in range(self.n):
+                x, y = float(self._q[r * nq]), float(self._q[r * nq + 1])
+                if not (x0 + 1.0 < x < x1 - 1.0 and y0 + 1.0 < y < y1 - 1.0):
+                    raise RuntimeError(f"robot {r} at ({x:.1f}, {y:.1f}) is at the end of the flush ground {self.ground_bounds}")
         for r in range(self.n):
             if not self.down[r] and not self.upright(r):
                 self.down[r] = True
@@ -290,16 +395,20 @@ class FleetSim:
             self.slip[r] = 0.8 * self.slip[r] + 0.2 * speed
 
 
-def check_patch_friction(ice_mu: float = ICE_MU, snow_mu: float = SNOW_MU) -> dict:
+def check_patch_friction(ice_mu: float = ICE_MU, snow_mu: float = SNOW_MU, flush: bool = False) -> dict:
     """Sliding-block measurement on the snow and on a patch. See calibrate_friction.py."""
     out = {}
+    patch = IcePatch(0.0, 0.0, 1.0, 1.0)
     for name, pos in (("snow", (5.0, 0.0)), ("ice", (0.0, 0.0))):
         lo, hi = 0.0, 45.0
         for _ in range(11):
             mid = 0.5 * (lo + hi)
             b = newton.ModelBuilder(up_axis=newton.Axis.Z)
             newton.solvers.SolverMuJoCo.register_custom_attributes(b)
-            add_snowfield(b, [IcePatch(0.0, 0.0, 1.0, 1.0)], snow_mu, ice_mu)
+            if flush:
+                add_flush_snowfield(b, [patch], snow_mu, ice_mu, flush_bounds([(5.0, 0.0)], [patch]))
+            else:
+                add_snowfield(b, [patch], snow_mu, ice_mu)
             body = b.add_body(xform=wp.transform(wp.vec3(pos[0], pos[1], 0.06)), mass=5.0)
             b.add_shape_box(body, hx=0.1, hy=0.1, hz=0.05, cfg=newton.ModelBuilder.ShapeConfig(mu=0.75))
             m = b.finalize()
@@ -321,3 +430,4 @@ def check_patch_friction(ice_mu: float = ICE_MU, snow_mu: float = SNOW_MU) -> di
 
 if __name__ == "__main__":
     print("effective friction, sliding block:", check_patch_friction(), f"(nominal snow {SNOW_MU}, ice {ICE_MU})")
+    print("the same with the ice flush:      ", check_patch_friction(flush=True))

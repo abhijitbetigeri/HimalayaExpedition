@@ -85,6 +85,7 @@ npy newton_track/report.py                                 # regenerate the tabl
 | `fleet_sim.py` | N policy-driven G1s in one MuJoCo-CPU scene on snow with ice patches. About 230 control ticks per second for four robots. No decisions. |
 | `g1_collision.py` | 29 collision-only primitives per robot, so a fallen robot lies on the snow. Upright walking is bit-identical with and without them. |
 | `fleet_reflex.py` | The slip reflex and its own evaluation. |
+| `fleet_flush.py` | Flush-ice and sweep-speed study: six cells of full missions, with controls. |
 | `fleet_search.py` | The mission: agents, bus, path planner, scoring, paired evaluation. |
 | `test_fleet_route.py` | Ten geometry cases for the planner, each a shape that broke an earlier version in a real mission. |
 | `fleet_comms.py` | `LossyBus` (packet loss, range limit), candidate agent variants, and the radio and team-size studies. |
@@ -457,6 +458,54 @@ cell (four approaches, 32 each). Falls without the reflex / with it:
 The mission tables under "Results" and the two studies above were run with the
 reflex as it was before this change.
 
+## Flush ice, and how fast to sweep
+
+The reflex study said the reflex leans on the patch's 2 mm lip and that speed is
+the lever. This puts both into missions. `FleetSim(flush=True)` builds the
+ground as coplanar tiles cut round the patches, so a foot on ice touches only
+ice; with the option off the compiled model and every tick of state are
+identical to before. The sliding block reads snow 0.395 and ice 0.081 on both
+grounds. Under a walking robot's feet the raised patch gives 0.105, because
+7.7 % of the load lands on the snow plane beneath it, and the flush patch 0.080.
+
+Four robots, coordinated, clean radio, new reflex, commit 7246561. Seeds
+180-199, the same twenty in every cell. The design was fixed before any mission
+ran and nothing was tuned or rerun. Rows are in `results/fleet_flush.json`.
+
+| Ice | Sweep m/s | Located | Assembled | Robots lost in 20 | Median s to assemble | Hit the 100 s limit |
+|---|---|---|---|---|---|---|
+| raised | 0.5 | 20/20 | 20/20 | 0 | 36.2 | 0 |
+| raised | 0.35 | 20/20 | 19/20 | 1 | 56.9 | 1 |
+| raised | 0.25 | 19/20 | 15/20 | 0 | 61.3 | 5 |
+| flush | 0.5 | 20/20 | 14/20 | 23 | 33.5 | 0 |
+| flush | 0.35 | 20/20 | 20/20 | 0 | 50.4 | 0 |
+| flush | 0.25 | 18/20 | 16/20 | 0 | 65.1 | 4 |
+
+Controls: the raised 0.5 cell matches an unpatched run on 20 of 20 seeds, and
+with the "ice" at snow friction both grounds give 20/20 assembled, nobody lost
+and no alarm. Robots actually made 0.41, 0.28 and 0.18 m/s for 0.5, 0.35 and
+0.25 asked.
+
+- **Flush ice at the current sweep speed costs about a robot a mission.** Lost
+  0 to 23, more on 16 seeds and fewer on none (sign test p = 0.00003), and six
+  dig teams in twenty (McNemar p = 0.031). The beacon is still located 20/20.
+  All 31 alarms fired with a foot already on the ice; 22 of the 23 robots fell
+  in the back-out, a median 1.4 s after the alarm.
+- **Sweeping at 0.35 m/s buys all of it back**: nobody lost in 33 alarms and
+  20/20 assembled, a median 14.5 s later than today's mission on raised ice.
+  That comparison was added after the results were in.
+- **0.25 m/s is too slow for a 100 s mission.** Nobody is lost, but nine of
+  forty missions run out of clock. Run on past the limit, all nine assemble by
+  127 s.
+- **Not established**: 0.35 on flush ice has no backing from the reflex harness,
+  which only has 0.5 and 0.25, and no loss in 33 encounters still allows a true
+  rate of several per cent. The pinpointing robot walks at a fixed 0.35 m/s and
+  the pacing rule has an absolute floor, so the slow cells are not a clean
+  scaling of the fast one.
+- **Nothing here changes the default.** Missions still sweep at 0.5 m/s on
+  raised ice. Slowing down only over ground nobody has walked yet is the
+  obvious next rule and was not built.
+
 ## What went wrong on the way, and what it taught
 
 The first planner stepped to one side of the first hazard in its way. It failed
@@ -501,11 +550,12 @@ Other things the missions exposed:
   single-robot MPM scene does not yet pass its own sanity check
   (`NEWTON_TRACK.md`, "Snow"). The footprints and drifts in the film are drawn by
   the renderer.
-- **The ice is easy to detect, and the reflex needs that.** Patches stand 2 mm
-  proud of the snow with a sharp edge and one friction value. On flush ice of
-  the same friction the reflex fails at sweep speed (36 falls in 128, every
-  square-on approach). A gradual edge, and a robot that meets ice while turning
-  or standing, were not tested.
+- **The ice in the main tables is easy to detect, and the reflex needs that.**
+  Patches stand 2 mm proud of the snow with a sharp edge and one friction
+  value. On flush ice of the same friction the team loses about a robot a
+  mission at the default sweep speed, and none at 0.35 m/s ("Flush ice, and how
+  fast to sweep"). A gradual edge, and a robot that meets ice while turning or
+  standing, were not tested.
 - **The world is flat and the sensor is simple.** No slope, no wind, a
   transceiver with clean range and bearing inside 2 m and nothing outside it.
 - **The radio is perfect** in the main tables. With the roster-memory fix the
