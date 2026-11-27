@@ -380,7 +380,7 @@ class Mission:
     """Physics + agents + bus for one seed. `tick()` until `done`."""
 
     def __init__(self, seed: int, mode: str = "coordinated", n_robots: int = 4, reflex: bool = False,
-                 ice_mu: float = ICE_MU, snow_mu: float = SNOW_MU):  # fmt: skip
+                 ice_mu: float = ICE_MU, snow_mu: float = SNOW_MU, bus: "Bus | None" = None):  # fmt: skip
         if mode not in ("coordinated", "independent"):
             raise ValueError(mode)
         self.seed, self.mode = seed, mode
@@ -388,7 +388,9 @@ class Mission:
         self.sim = FleetSim(self.scenario.starts, self.scenario.patches, seed=seed, ice_mu=ice_mu, snow_mu=snow_mu)
         self.n = n_robots
         coordinated = mode == "coordinated"
-        self.bus = Bus(n_robots, on=coordinated)
+        # `bus` lets a study swap in a degraded radio (range limit, packet loss)
+        # without touching the agents. It must keep Bus's interface.
+        self.bus = bus if bus is not None else Bus(n_robots, on=coordinated)
         self.agents = [RobotAgent(r, n_robots, self.scenario.starts[r][0], coordinated) for r in range(n_robots)]
         self.sensor = Transceiver(self.scenario.beacon, seed)
         self.reflex = None
@@ -405,6 +407,7 @@ class Mission:
         self.track = []  # (t, [(x, y)...]) every 10 ticks, for coverage
         self._team_ticks = 0
         self._parked_ticks = 0
+        self._link_until = {}  # (sender, receiver) -> tick until which the film keeps drawing it
 
     def tick(self):
         sim, t = self.sim, self.t
@@ -429,6 +432,8 @@ class Mission:
             for r in range(self.n):
                 if self.reflex.active[r] and not sim.down[r]:
                     self.agents[r].role = "backoff"
+        for pair in self.bus.links:  # a radio event lasts one tick; hold it half a second so it is visible
+            self._link_until[pair] = self.t + POLICY_HZ // 2
         sim.step(cmds)
         self.t += 1
         self._score(cmds)
@@ -473,7 +478,7 @@ class Mission:
             beacon=self.scenario.beacon,
             beacon_found=self.t_found is not None,
             hazards=list(known.values()),
-            links=list(self.bus.links),
+            links=[pair for pair, until in self._link_until.items() if until >= self.t],
             targets=[a.target for a in agents],
             roles=[a.role for a in agents],
             caption=cap,
