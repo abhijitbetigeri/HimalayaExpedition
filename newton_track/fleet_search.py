@@ -407,6 +407,7 @@ class Mission:
         self.track = []  # (t, [(x, y)...]) every 10 ticks, for coverage
         self._team_ticks = 0
         self._parked_ticks = 0
+        self._last_wz = np.zeros(n_robots, dtype=np.float32)
         self._link_until = {}  # (sender, receiver) -> tick until which the film keeps drawing it
 
     def tick(self):
@@ -422,6 +423,13 @@ class Mission:
             self._pending_ice[r] = None
             cmds[r] = cmd
             outboxes.append(out)
+        # Yaw-rate slew limit. The policy falls on plain snow within a second of a
+        # hard yaw reversal at speed (3 of 9 one-minute runs flipping +-1 rad/s at
+        # 0.5 m/s, measured while building the slip reflex). A full reversal now
+        # takes two thirds of a second.
+        step = 3.0 / POLICY_HZ
+        cmds[:, 2] = np.clip(cmds[:, 2], self._last_wz - step, self._last_wz + step)
+        self._last_wz = cmds[:, 2].copy()
         for r, out in enumerate(outboxes):  # delivered next tick: one tick of radio latency
             for m in out:
                 self.bus.send(r, m, alive)
