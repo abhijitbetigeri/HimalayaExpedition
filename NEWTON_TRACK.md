@@ -308,6 +308,28 @@ What is established, in the order it was learned:
 5. **A body with mass but no inertia falls through at any step size.** A trap for
    whoever writes the next test, not a property of snow.
 
+Ruled out since, for the hard-snow failure (2026-11-26, a debugging agent, one
+seed each, hard snow, 5 cm voxels; the flags it added to `snow_mpm.py` for this
+are not committed, and the agent stopped before reporting):
+
+| variant | fell at step |
+|---|---|
+| baseline | 61 |
+| static side walls round the bed | 58 |
+| stiffer foot contact | 63 |
+| eight coupled steps per tick instead of four | 64 |
+| proxy relaxation 0.5 | 66 |
+| Aitken relaxation, three coupling iterations | 57 |
+| stand for one second before walking | 74 |
+
+So an unconfined bed, the coupling step, relaxation and the spawn transient are
+each not the cause, as far as one seed can say. What its logs do show: the
+vertical force the snow puts on the feet has a spread of about 180 N on a mean
+of about 260 N, and the horizontal force on the feet is as large as the
+vertical (ratio 0.9 to 1.3). That reads as the snow gripping and jerking the
+feet, not failing to carry them. Foot-snow friction (suspect 3 in the brief)
+and voxel size were not reached.
+
 Open before any snow number is quoted:
 
 - The hard-snow sanity check above. First suspects: the one-step lag in the

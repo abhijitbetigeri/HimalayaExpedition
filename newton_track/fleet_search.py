@@ -68,7 +68,14 @@ ASSEMBLED_WITHIN = 1.7  # a robot this close to the true beacon and holding coun
 TEAM_SIZE = 3
 HAZARD_RADIUS = 1.3  # how much ground one bad experience condemns
 HEARTBEAT = POLICY_HZ // 5
-LOST_AFTER = int(1.5 * POLICY_HZ)  # silence this long means a teammate is gone
+LOST_AFTER = int(1.5 * POLICY_HZ)  # a heartbeat older than this is too stale to pace against
+# Silence this long means a teammate is gone. It was 1.5 s, the same as the
+# pacing limit, and that one number broke the team under packet loss: at 95 %
+# loss live teammates were dropped 68 % of the time, a robot that heard nobody
+# took the whole field as its lane, and four of twelve beacons near the field
+# edge were never found, where radio-off robots found all twelve
+# (results/fleet_comms.json). Ten seconds takes that from 8/12 to 12/12.
+ROSTER_AFTER = 10 * POLICY_HZ
 T_MAX = 100 * POLICY_HZ  # mission time limit, ticks
 
 
@@ -337,7 +344,7 @@ class RobotAgent:
     # ---- shared rules: every agent computes these from the same roster ----
 
     def _heard(self, t: int) -> dict:
-        return {r: i for r, i in self.roster.items() if r not in self.lost and t - i["t"] <= LOST_AFTER}
+        return {r: i for r, i in self.roster.items() if r not in self.lost and t - i["t"] <= ROSTER_AFTER}
 
     def _in_line(self, t: int, me) -> list:
         """Sweepers level with the front, left to right. A robot more than
@@ -366,7 +373,9 @@ class RobotAgent:
         if self.id not in order:
             return me[1]  # a straggler does not slow down for anyone
         heard = self._heard(t)
-        return float(np.mean([me[1] if r == self.id else heard[r]["y"] for r in order]))
+        # Remember a quiet teammate, but only keep pace with positions that are fresh.
+        ys = [me[1]] + [heard[r]["y"] for r in order if r != self.id and t - heard[r]["t"] <= LOST_AFTER]
+        return float(np.mean(ys))
 
     def _slot_xy(self, k: int, centre) -> tuple[float, float]:
         a = 2 * math.pi * k / N_SLOTS
@@ -459,6 +468,10 @@ class RobotAgent:
         if self.best_signal is not None:
             _rng, est, who = self.best_signal
             if who == self.id:
+                # The pinpointing robot stands on the beacon, not on the ring. If it
+                # claimed a dig slot earlier as a helper, that claim would go on
+                # blocking the slot and both neighbours (radio study, loss 0.95 seed 50).
+                self.slot = None
                 goal = self.found or est
                 if self.found is not None and self._arrived(pos, self.found, 0.5, 0.9):
                     self.role = "hold"

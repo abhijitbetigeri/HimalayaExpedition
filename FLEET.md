@@ -238,6 +238,10 @@ Candidate agent changes, same seeds and radio:
   and HAZARD and is not distinguishable from it on twelve seeds. `+relay` is what
   a 3 m range needs (5/12 to 11/12) and is a bigger edit. `+steady` has the best
   lanes at 95 % but changes behaviour on a clean radio, so it was not taken.
+  **The `+memory` change is now in `fleet_search.py`.** The tables above are from
+  the commit before it. On the current code the unmodified agent reproduces the
+  `+memory` cells mission for mission at 80 % and 95 % loss (12 of 12 each), and
+  all twenty clean-radio held-out missions are identical to before.
 
 **Team size.**
 
@@ -250,9 +254,10 @@ Candidate agent changes, same seeds and radio:
   manage 9/12, at the price of more robots lost (1.08 against 0.83 a mission).
   Three discordant seeds, so suggestive only.
 
-Known and unfixed on that commit, with the seed that shows it: a pinpointing
-robot keeps advertising a dig slot it claimed earlier as a helper (loss 0.95
-seed 50); one residual repeat on a mapped patch that ended with two robots down
+Found on that commit, with the seed that shows it: a pinpointing robot kept
+advertising a dig slot it had claimed earlier as a helper (loss 0.95 seed 50).
+It now drops the claim; that changed no outcome on the 44 missions re-run. Still
+open: one residual repeat on a mapped patch that ended with two robots down
 (loss 0.8 seed 49, 1 mission in 204); and every robot lost on a clean radio in
 these studies went down during the reflex's own back-out, one of them more than
 0.6 m outside any patch.
@@ -306,8 +311,9 @@ Other things the missions exposed:
   and a robot that meets ice while turning or standing were not tested.
 - **The world is flat and the sensor is simple.** No slope, no wind, a
   transceiver with clean range and bearing inside 2 m and nothing outside it.
-- **The radio is perfect** in the main tables. Under 95 % packet loss or a 3 m
-  range the team as committed fails; see the radio study.
+- **The radio is perfect** in the main tables. With the roster-memory fix the
+  team locates 12/12 and assembles 11/12 at 95 % packet loss, on twelve seeds. A
+  3 m radio range still fails: nothing is relayed.
 - **No robot gets up.** Every loss is permanent.
 - **One field size, one ice density.** Team size was varied from three to six
   on the same field only.
