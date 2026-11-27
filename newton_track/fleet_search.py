@@ -30,6 +30,10 @@ Coordination, concretely:
   - on a signal, the robot with the shortest range pinpoints, the others take
     dig positions around it without crossing paths.
 
+Scoring. "Located": a robot declared the burial point within 1 m of the truth.
+"Assembled": three robots standing, holding, within 1.7 m of the true beacon for
+a full second. Three is fixed: a team that has lost two of four cannot assemble.
+
 `--mode independent` is the ablation: identical robots, sensors, controller and
 ice, but the bus is off. Each robot sweeps the lane it started in and reacts
 only to what it senses itself. The two modes run on the same seeds, so every
@@ -79,14 +83,18 @@ class Scenario:
     starts: list
 
     @staticmethod
-    def sample(seed: int, n_robots: int, n_patches: int = 4) -> "Scenario":
+    def sample(seed: int, n_robots: int, n_patches: int = 3) -> "Scenario":
+        # Three patches of 1.2 to 2.0 m on a side: about 5 % of the field is ice.
+        # Fixed before any evaluation. The first draft had four patches up to
+        # 2.8 m, which put ice across four lanes in five; with a policy that
+        # cannot cross ice that measures the ice, not the team.
         rng = np.random.default_rng(1000 + seed)
         x0, x1, y0, y1 = FIELD
         patches = []
         for _ in range(200):
             if len(patches) == n_patches:
                 break
-            hx, hy = rng.uniform(0.8, 1.4), rng.uniform(0.8, 1.4)
+            hx, hy = rng.uniform(0.6, 1.0), rng.uniform(0.6, 1.0)
             p = IcePatch(float(rng.uniform(x0 + hx, x1 - hx)), float(rng.uniform(y0 + 2.5, y1 - 1.5)), float(hx), float(hy))
             if all(abs(p.x - q.x) > p.hx + q.hx + 0.8 or abs(p.y - q.y) > p.hy + q.hy + 0.8 for q in patches):
                 patches.append(p)
@@ -204,7 +212,7 @@ class RobotAgent:
         self.best_signal = None  # (range, (x, y), reporter)
         self.found = None  # (x, y) once pinpointed
         self.target = None
-        self.hold_ticks = 0
+        self.holding = False
         self.stuck_ticks = 0
 
     # ---- shared rules: every agent computes these from the same roster ----
@@ -318,16 +326,18 @@ class RobotAgent:
                 if self.found is None and (close or (self.stuck_ticks > POLICY_HZ and reading is not None)):
                     self.found = reading[1] if reading is not None else est
                     out.append({"type": "FOUND", "x": self.found[0], "y": self.found[1]})
-                if self.found is not None and math.hypot(pos[0] - self.found[0], pos[1] - self.found[1]) < 0.5:
+                if self.found is not None and self._arrived(pos, self.found, 0.5, 0.9):
                     self.role = "hold"
                     return (0.0, 0.0, 0.0), out
                 return cmd, out
             # a teammate is pinpointing: take a dig position
             slot = self._dig_slot(t, me, self.found or est)
             self.target = route(pos, slot, self.hazards)
-            cmd = self._yield_to_others(me, steer(me, self.target, V_SWEEP, stop_within=0.3))
-            self.role = "hold" if math.hypot(pos[0] - slot[0], pos[1] - slot[1]) < 0.35 else "converge"
-            return cmd, out
+            if self._arrived(pos, slot, 0.35, 0.75):
+                self.role = "hold"
+                return (0.0, 0.0, 0.0), out
+            self.role = "converge"
+            return self._yield_to_others(me, steer(me, self.target, V_SWEEP, stop_within=0.3)), out
 
         # -- sweep --
         if me[1] >= y1 - 0.3:
@@ -342,6 +352,13 @@ class RobotAgent:
             ahead = me[1] - self._line_y(t, me)
             v = float(np.clip(V_SWEEP - 0.6 * ahead, 0.15, V_SWEEP))
         return self._yield_to_others(me, steer(me, self.target, v)), out
+
+    def _arrived(self, pos, goal, enter: float, leave: float) -> bool:
+        """Hold with hysteresis. A standing robot drifts a few centimetres a second;
+        without the band it flips between walking and holding and never settles."""
+        d = math.hypot(pos[0] - goal[0], pos[1] - goal[1])
+        self.holding = d < (leave if self.holding else enter)
+        return self.holding
 
     def _add_hazard(self, x: float, y: float):
         if all(math.hypot(x - hx, y - hy) > 0.6 for hx, hy, _ in self.hazards):
@@ -386,7 +403,8 @@ class Mission:
         self.t_assembled = None
         self.found_error = None
         self.track = []  # (t, [(x, y)...]) every 10 ticks, for coverage
-        self.need = TEAM_SIZE
+        self._team_ticks = 0
+        self._parked_ticks = 0
 
     def tick(self):
         sim, t = self.sim, self.t
@@ -425,17 +443,18 @@ class Mission:
             if finders:
                 self.t_found = self.t
                 self.found_error = round(math.hypot(finders[0].found[0] - b[0], finders[0].found[1] - b[1]), 2)
+        # On the dig team: standing, holding position, close to the TRUE burial point.
         team = [
             r for r, p in enumerate(poses)
-            if not sim.down[r] and math.hypot(p[0] - b[0], p[1] - b[1]) < ASSEMBLED_WITHIN
-            and float(np.abs(cmds[r]).sum()) < 1e-6
+            if not sim.down[r] and self.agents[r].role == "hold" and math.hypot(p[0] - b[0], p[1] - b[1]) < ASSEMBLED_WITHIN
         ]  # fmt: skip
         standing = int((~sim.down).sum())
-        need = min(self.need, standing)
-        if self.t_found is not None and self.t_assembled is None and need > 0 and len(team) >= need:
+        self._team_ticks = self._team_ticks + 1 if self.t_found is not None and len(team) >= TEAM_SIZE else 0
+        if self.t_assembled is None and self._team_ticks >= POLICY_HZ:  # held for a full second
             self.t_assembled = self.t
         all_parked = all(a.role in ("hold", "down") for a in self.agents)
-        if self.t_assembled is not None or self.t >= T_MAX or standing == 0 or (all_parked and self.t > POLICY_HZ):
+        self._parked_ticks = self._parked_ticks + 1 if all_parked else 0
+        if self.t_assembled is not None or self.t >= T_MAX or standing == 0 or self._parked_ticks > 3 * POLICY_HZ:
             self.done = True
 
     def overlay(self) -> Overlay:
