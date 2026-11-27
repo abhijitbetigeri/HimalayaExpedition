@@ -1,0 +1,85 @@
+{
+ "device": "cpu",
+ "args": {
+  "snow": [
+   "powder",
+   "packed",
+   "hard"
+  ],
+  "depth": 0.15,
+  "density": 300.0,
+  "voxel": 0.05,
+  "bed_length": 1.6,
+  "bed_half_width": 0.3,
+  "mpm_per_tick": 4,
+  "seeds": 1,
+  "steps": 120,
+  "speed": 0.5,
+  "smoke": false,
+  "out": null
+ },
+ "rows": [
+  {
+   "snow": "bare",
+   "seed": 0,
+   "depth_m": 0.0,
+   "yield_pressure": null,
+   "cohesion": null,
+   "particles": 0,
+   "survived": 120,
+   "fell": false,
+   "forward_m": 0.944,
+   "mean_speed": 0.393,
+   "sink_m": -0.0038,
+   "wall_s": 5.3
+  },
+  {
+   "snow": "powder",
+   "seed": 0,
+   "depth_m": 0.15,
+   "yield_pressure": 20000.0,
+   "cohesion": 0.0,
+   "particles": 11375,
+   "survived": 120,
+   "fell": false,
+   "forward_m": 1.078,
+   "mean_speed": 0.446,
+   "sink_m": 0.1439,
+   "snow_force_n": -15.8,
+   "snow_weight_fraction": -0.047,
+   "wall_s": 204.3
+  },
+  {
+   "snow": "packed",
+   "seed": 0,
+   "depth_m": 0.15,
+   "yield_pressure": 100000.0,
+   "cohesion": 20000.0,
+   "particles": 11375,
+   "survived": 72,
+   "fell": true,
+   "forward_m": 0.81,
+   "mean_speed": 0.533,
+   "sink_m": 0.1065,
+   "snow_force_n": 111.4,
+   "snow_weight_fraction": 0.328,
+   "wall_s": 103.9
+  },
+  {
+   "snow": "hard",
+   "seed": 0,
+   "depth_m": 0.15,
+   "yield_pressure": 1000000.0,
+   "cohesion": 100000.0,
+   "particles": 11375,
+   "survived": 61,
+   "fell": true,
+   "forward_m": 0.771,
+   "mean_speed": 0.613,
+   "sink_m": 0.0194,
+   "snow_force_n": 258.1,
+   "snow_weight_fraction": 0.759,
+   "wall_s": 78.2
+  }
+ ]
+}

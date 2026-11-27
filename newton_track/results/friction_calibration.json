@@ -1,0 +1,41 @@
+{
+  "block_mu": 0.75,
+  "cone": "elliptic",
+  "rows": [
+    {
+      "nominal": 0.05,
+      "priority": 0.0518,
+      "max": 0.7506,
+      "steel": 0.0518,
+      "steel_avg": 0.4018
+    },
+    {
+      "nominal": 0.1,
+      "priority": 0.1012,
+      "max": 0.7506,
+      "steel": 0.1017,
+      "steel_avg": 0.427
+    },
+    {
+      "nominal": 0.2,
+      "priority": 0.2004,
+      "max": 0.7506,
+      "steel": 0.2017,
+      "steel_avg": 0.4769
+    },
+    {
+      "nominal": 0.4,
+      "priority": 0.4001,
+      "max": 0.7506,
+      "steel": 0.4018,
+      "steel_avg": 0.5772
+    },
+    {
+      "nominal": 0.75,
+      "priority": 0.7506,
+      "max": 0.7506,
+      "steel": 0.7522,
+      "steel_avg": 0.7522
+    }
+  ]
+}

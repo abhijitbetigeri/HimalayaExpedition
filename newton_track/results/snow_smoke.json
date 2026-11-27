@@ -1,0 +1,51 @@
+{
+ "device": "cpu",
+ "args": {
+  "snow": [
+   "powder"
+  ],
+  "depth": 0.15,
+  "density": 300.0,
+  "voxel": 0.025,
+  "bed_length": 3.0,
+  "bed_half_width": 0.5,
+  "mpm_per_tick": 4,
+  "seeds": 1,
+  "steps": 25,
+  "speed": 0.5,
+  "smoke": true,
+  "out": null
+ },
+ "rows": [
+  {
+   "snow": "bare",
+   "seed": 0,
+   "depth_m": 0.0,
+   "yield_pressure": null,
+   "cohesion": null,
+   "particles": 0,
+   "survived": 25,
+   "fell": false,
+   "forward_m": 0.109,
+   "mean_speed": 0.205,
+   "sink_m": -0.0061,
+   "wall_s": 2.8
+  },
+  {
+   "snow": "powder",
+   "seed": 0,
+   "depth_m": 0.15,
+   "yield_pressure": 20000.0,
+   "cohesion": 0.0,
+   "particles": 7175,
+   "survived": 25,
+   "fell": false,
+   "forward_m": 0.104,
+   "mean_speed": 0.194,
+   "sink_m": 0.1503,
+   "snow_force_n": -5.4,
+   "snow_weight_fraction": -0.016,
+   "wall_s": 21.4
+  }
+ ]
+}

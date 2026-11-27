@@ -50,6 +50,8 @@ this.
 | `bootstrap.sh` | Provisioning for the Nebius VM (the other compute path). |
 | `recon.html` | Original project recon and track breakdown. |
 
+| `newton_track/` | A third stack on the Newton engine (added 2026-11-26): a deterministic CPU sweep of the Newton-shipped G1 policy over calibrated friction, wind and slope, cross-checked under Skild's Steel solver, plus an MPM snow scene that is not yet a result. Own environment, own doc: **read `NEWTON_TRACK.md`**. |
+
 They compose: `PatchyIceJoystick` → `WindyJoystick` → stock `Joystick`, with
 `ice_randomize` supplying the per-episode model randomization underneath.
 Verified working together under the brax wrapper.
