@@ -57,8 +57,10 @@ they all apply the same deterministic rule to the same shared roster.
 sideways grip the ground is giving from its own motion, confirms ice when a
 planted foot slides while that grip is low, stops, backs out onto snow, and
 reports the ice edge. It reads nothing about the ground. Measured alone on 128
-paired encounters: 116 falls without it, 1 with it, and one false alarm in 39.8
-robot-minutes on snow.
+paired encounters (seeds 300-315): 126 falls without it, 2 with it, and no alarm
+in 79.6 robot-minutes on plain snow. That pools four approaches, three of them
+easy. Square-on at sweep speed, the hard one, it falls 6 times in 256. See "The
+reflex, looked at harder" below for what it does not handle.
 
 **The ablation.** `--mode independent` is the same robots, sensors, controller,
 reflex and ice with the bus switched off. Each robot sweeps the lane it started
@@ -364,6 +366,97 @@ ground no robot came within 2 m of, and that the team then parks.
 - **Not fixed.** Nothing happens after the first pass. A second pass over the
   missed ground with the unused time is the open piece of work.
 
+## The reflex, looked at harder
+
+A third follow-up, same method: frozen copy of ab9f1c3, tuned on harness seeds
+10-25, scored on seeds nobody had used. Rows are in
+`results/fleet_reflex_study.json`.
+
+**Every robot lost with the reflex on was lost by the reflex.** Sixteen robots
+were lost in 15 of the 120 committed reflex-on missions. Replayed, all 15 came
+out bit-identical, and the losses sort like this:
+
+| What the robot was doing when it went down | Lost |
+|---|---|
+| Reflex never fired | 0 |
+| Fired too late, pelvis already on the ice | 0 |
+| During the 0.3 s stop | 0 |
+| In the back-out, never having left the ice | 14 |
+| Released with a foot still on the ice, slid on, fell in a second back-out | 2 |
+| Walked back onto a patch it had left | 0 |
+
+- **The fourteen** met the ice square-on at sweep speed. The alarm comes with
+  the pelvis 2 to 11 cm short of the edge, but this policy needs about 0.5 s
+  and 9 cm to stop, so both soles end up on the ice and the backward command
+  started while the robot was still sliding forward.
+- **The two** were walking along a patch edge with only the left foot on it.
+  The policy yaws clockwise when it backs, which with ice on the left curves
+  it into the patch.
+- **The published "1 fall in 128" flattered the reflex.** It pools four
+  approaches and three almost never fail. Square-on at 0.5 m/s alone, the old
+  reflex fell 24 and 25 times in 256 on two fresh seed sets, about one in ten.
+
+**The change** is two defaults in `IceReflex`: pause 0.9 s instead of 0.3 s
+before backing, so the slide has ended, and step right at 0.15 m/s while
+backing when the foot that slid is the left one. Ice friction 0.08, raised
+patch, harness seeds 300 and up:
+
+| Test | n | Falls before | Falls after |
+|---|---|---|---|
+| Square-on at 0.5 m/s (seeds 300-331) | 256 | 24 | 6 |
+| The four published approaches (seeds 300-315) | 128 | 3 | 2 |
+| Along the edge, left foot on ice: released on the ice | 64 | 16 | 2 |
+| Along the edge, right foot on ice: released on the ice | 64 | 0 | 0 |
+| Plain snow, alarms | 79.6 robot-min | 0 | 0 |
+
+Square-on is 21 against 3 discordant pairs, exact McNemar p = 0.0003. Without
+the reflex 126 of the 128 fall.
+
+**In missions**, seeds 160-179, four robots, reflex on, commit 7b7a444, paired:
+
+| Mode | | Located | Assembled | Robots lost in 20 missions |
+|---|---|---|---|---|
+| coordinated | before | 18/20 | 18/20 | 2 |
+| coordinated | after | 19/20 | 19/20 | 1 |
+| independent | before | 19/20 | 0/20 | 4 |
+| independent | after | 19/20 | 0/20 | 0 |
+
+Six lost to one over forty missions: fewer on six, more on one, sign test
+p = 0.125. The direction agrees with the harness and twenty seeds a mode cannot
+show more than that.
+
+**What got worse.** At 0.5 m/s and 45 degrees the new reflex releases with a
+foot still on the ice 5 times in 32 against 1 in 32. All five stayed upright in
+the harness; it is not traced. Back-outs take a median 4.6 s instead of 4.0 s.
+
+**Less convenient ice.** Reflex as at ab9f1c3, harness seeds 10-25, n = 128 per
+cell (four approaches, 32 each). Falls without the reflex / with it:
+
+| Ice friction | Raised 2 mm | Flush with the snow |
+|---|---|---|
+| 0.05 | 128 / 15 | 128 / 96 |
+| 0.08 | 116 / 1 | 102 / 62 |
+| 0.12 | 23 / 0 | 1 / 0 |
+| 0.15 | 0 / 0 | 0 / 0 |
+| 0.40, control | 0 / 0, no alarm | 0 / 0, no alarm |
+
+- **The reflex was relying on the 2 mm lip.** On flush ice the slip is felt
+  about 12 cm later, with the pelvis 6 cm past the edge instead of 6 cm short.
+  At friction 0.08 flush, 62 of 64 fall at 0.5 m/s and none of 64 at 0.25 m/s.
+  The new reflex gets 36 of 128 on the same used seeds, and square-on at
+  0.5 m/s is still 32 of 32.
+- **At 0.05 it also fails slowly**: flush, square-on at 0.25 m/s, 32 of 32.
+- **No alarm fired clear of the ice in any cell.**
+- **The raised patch is less slippery than its number.** Soles sink up to 7 mm,
+  so about 6 % of the load lands on the snow plane underneath: 0.099 under an
+  upright foot for a nominal 0.08.
+- **The lever that works is speed, not the reflex.** At 0.25 m/s nothing fell
+  in any 0.08 cell, raised or flush. Sweeping slower over unknown ground was
+  not tried in missions.
+
+The mission tables under "Results" and the two studies above were run with the
+reflex as it was before this change.
+
 ## What went wrong on the way, and what it taught
 
 The first planner stepped to one side of the first hazard in its way. It failed
@@ -408,9 +501,11 @@ Other things the missions exposed:
   single-robot MPM scene does not yet pass its own sanity check
   (`NEWTON_TRACK.md`, "Snow"). The footprints and drifts in the film are drawn by
   the renderer.
-- **The ice is easy to detect.** Patches stand 2 mm proud of the snow with a
-  sharp edge and one friction value. A flush or gradual edge, other frictions,
-  and a robot that meets ice while turning or standing were not tested.
+- **The ice is easy to detect, and the reflex needs that.** Patches stand 2 mm
+  proud of the snow with a sharp edge and one friction value. On flush ice of
+  the same friction the reflex fails at sweep speed (36 falls in 128, every
+  square-on approach). A gradual edge, and a robot that meets ice while turning
+  or standing, were not tested.
 - **The world is flat and the sensor is simple.** No slope, no wind, a
   transceiver with clean range and bearing inside 2 m and nothing outside it.
 - **The radio is perfect** in the main tables. With the roster-memory fix the
