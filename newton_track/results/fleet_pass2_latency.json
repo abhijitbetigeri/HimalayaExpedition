@@ -1,0 +1,2492 @@
+{
+ "a": {
+  "label": "(a) reflex on, clean radio, seeds 340-359",
+  "base_files": [
+   "out/final_a_on_clean_base.jsonl"
+  ],
+  "new_files": [
+   "out/final_a_on_clean_new.jsonl"
+  ],
+  "seeds": [
+   340,
+   341,
+   342,
+   343,
+   344,
+   345,
+   346,
+   347,
+   348,
+   349,
+   350,
+   351,
+   352,
+   353,
+   354,
+   355,
+   356,
+   357,
+   358,
+   359
+  ],
+  "n": 20,
+  "identical": 20,
+  "differing_seeds": [],
+  "second_pass_seeds": [],
+  "differing_without_second_pass": [],
+  "code_sha": {
+   "base": [
+    "417e00f62f33a316"
+   ],
+   "new": [
+    "7f32c28be67497f4"
+   ]
+  },
+  "totals": {
+   "base": {
+    "located": 20,
+    "assembled": 20,
+    "robots_lost": 0,
+    "mean_duration_s": 36.9
+   },
+   "new": {
+    "located": 20,
+    "assembled": 20,
+    "robots_lost": 0,
+    "mean_duration_s": 36.9
+   }
+  },
+  "second_pass_rows": {}
+ },
+ "b": {
+  "label": "(b) reflex off, clean radio, seeds 340-359",
+  "base_files": [
+   "out/final_b_off_clean_base.jsonl"
+  ],
+  "new_files": [
+   "out/final_b_off_clean_new.jsonl"
+  ],
+  "seeds": [
+   340,
+   341,
+   342,
+   343,
+   344,
+   345,
+   346,
+   347,
+   348,
+   349,
+   350,
+   351,
+   352,
+   353,
+   354,
+   355,
+   356,
+   357,
+   358,
+   359
+  ],
+  "n": 20,
+  "identical": 20,
+  "differing_seeds": [],
+  "second_pass_seeds": [],
+  "differing_without_second_pass": [],
+  "code_sha": {
+   "base": [
+    "417e00f62f33a316"
+   ],
+   "new": [
+    "7f32c28be67497f4"
+   ]
+  },
+  "totals": {
+   "base": {
+    "located": 20,
+    "assembled": 14,
+    "robots_lost": 20,
+    "mean_duration_s": 30.1
+   },
+   "new": {
+    "located": 20,
+    "assembled": 14,
+    "robots_lost": 20,
+    "mean_duration_s": 30.1
+   }
+  },
+  "second_pass_rows": {}
+ },
+ "c": {
+  "label": "(c) reflex on, 3 m radio, seeds 340-359",
+  "base_files": [
+   "out/final_c_on_r3_base_1.jsonl",
+   "out/final_c_on_r3_base_2.jsonl"
+  ],
+  "new_files": [
+   "out/final_c_on_r3_new_1.jsonl",
+   "out/final_c_on_r3_new_2.jsonl"
+  ],
+  "seeds": [
+   340,
+   341,
+   342,
+   343,
+   344,
+   345,
+   346,
+   347,
+   348,
+   349,
+   350,
+   351,
+   352,
+   353,
+   354,
+   355,
+   356,
+   357,
+   358,
+   359
+  ],
+  "n": 20,
+  "identical": 15,
+  "differing_seeds": [
+   345,
+   346,
+   347,
+   354,
+   359
+  ],
+  "second_pass_seeds": [
+   345,
+   346,
+   347,
+   354,
+   359
+  ],
+  "differing_without_second_pass": [],
+  "code_sha": {
+   "base": [
+    "417e00f62f33a316"
+   ],
+   "new": [
+    "7f32c28be67497f4"
+   ]
+  },
+  "totals": {
+   "base": {
+    "located": 20,
+    "assembled": 20,
+    "robots_lost": 0,
+    "mean_duration_s": 38.3
+   },
+   "new": {
+    "located": 20,
+    "assembled": 20,
+    "robots_lost": 0,
+    "mean_duration_s": 37.9
+   }
+  },
+  "second_pass_rows": {
+   "345": {
+    "base": {
+     "located": true,
+     "t_located_s": 36.2,
+     "assembled": true,
+     "t_assembled_s": 50.6,
+     "robots_lost": 0,
+     "duration_s": 50.6,
+     "used_second_pass": true,
+     "first_parked_s": 42.66,
+     "last_parked_s": 42.66,
+     "first_back_s": 45.38,
+     "last_back_s": 45.38,
+     "first_moving_s": 46.52,
+     "first_own_signal_s": 30.92,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": true,
+     "t_located_s": 36.2,
+     "assembled": true,
+     "t_assembled_s": 48.0,
+     "robots_lost": 0,
+     "duration_s": 48.0,
+     "used_second_pass": true,
+     "first_parked_s": 42.66,
+     "last_parked_s": 42.66,
+     "first_back_s": 42.66,
+     "last_back_s": 42.66,
+     "first_moving_s": 43.58,
+     "first_own_signal_s": 30.92,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "346": {
+    "base": {
+     "located": true,
+     "t_located_s": 48.9,
+     "assembled": true,
+     "t_assembled_s": 53.7,
+     "robots_lost": 0,
+     "duration_s": 53.7,
+     "used_second_pass": true,
+     "first_parked_s": 40.68,
+     "last_parked_s": 40.68,
+     "first_back_s": 43.54,
+     "last_back_s": 43.54,
+     "first_moving_s": 45.58,
+     "first_own_signal_s": 44.18,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": true,
+     "t_located_s": 48.9,
+     "assembled": true,
+     "t_assembled_s": 50.7,
+     "robots_lost": 0,
+     "duration_s": 50.7,
+     "used_second_pass": true,
+     "first_parked_s": 40.68,
+     "last_parked_s": 40.68,
+     "first_back_s": 40.68,
+     "last_back_s": 40.68,
+     "first_moving_s": 43.52,
+     "first_own_signal_s": 44.18,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "347": {
+    "base": {
+     "located": true,
+     "t_located_s": 31.5,
+     "assembled": true,
+     "t_assembled_s": 53.6,
+     "robots_lost": 0,
+     "duration_s": 53.6,
+     "used_second_pass": false,
+     "first_parked_s": 53.54,
+     "last_parked_s": 53.54,
+     "first_back_s": null,
+     "last_back_s": null,
+     "first_moving_s": null,
+     "first_own_signal_s": 26.66,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": true,
+     "t_located_s": 31.5,
+     "assembled": true,
+     "t_assembled_s": 53.6,
+     "robots_lost": 0,
+     "duration_s": 53.6,
+     "used_second_pass": true,
+     "first_parked_s": 53.54,
+     "last_parked_s": 53.54,
+     "first_back_s": 53.54,
+     "last_back_s": 53.54,
+     "first_moving_s": null,
+     "first_own_signal_s": 26.66,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "354": {
+    "base": {
+     "located": true,
+     "t_located_s": 26.2,
+     "assembled": true,
+     "t_assembled_s": 72.6,
+     "robots_lost": 0,
+     "duration_s": 72.6,
+     "used_second_pass": true,
+     "first_parked_s": 53.28,
+     "last_parked_s": 56.96,
+     "first_back_s": 57.52,
+     "last_back_s": 59.8,
+     "first_moving_s": 60.08,
+     "first_own_signal_s": 21.54,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": true,
+     "t_located_s": 26.2,
+     "assembled": true,
+     "t_assembled_s": 70.0,
+     "robots_lost": 0,
+     "duration_s": 70.0,
+     "used_second_pass": true,
+     "first_parked_s": 53.28,
+     "last_parked_s": 56.96,
+     "first_back_s": 57.5,
+     "last_back_s": 57.52,
+     "first_moving_s": 60.08,
+     "first_own_signal_s": 21.54,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "359": {
+    "base": {
+     "located": true,
+     "t_located_s": 35.9,
+     "assembled": true,
+     "t_assembled_s": 49.5,
+     "robots_lost": 0,
+     "duration_s": 49.5,
+     "used_second_pass": true,
+     "first_parked_s": 38.1,
+     "last_parked_s": 38.1,
+     "first_back_s": 45.68,
+     "last_back_s": 45.68,
+     "first_moving_s": 46.78,
+     "first_own_signal_s": 31.12,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": true,
+     "t_located_s": 35.9,
+     "assembled": true,
+     "t_assembled_s": 49.5,
+     "robots_lost": 0,
+     "duration_s": 49.5,
+     "used_second_pass": true,
+     "first_parked_s": 38.1,
+     "last_parked_s": 38.1,
+     "first_back_s": 44.12,
+     "last_back_s": 44.12,
+     "first_moving_s": 45.28,
+     "first_own_signal_s": 31.12,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    }
+   }
+  }
+ },
+ "d": {
+  "label": "(d, supplementary) beacon out of reach, reflex on, clean radio, seeds 340-359",
+  "base_files": [
+   "out/final_d_sweep_base_1.jsonl",
+   "out/final_d_sweep_base_2.jsonl"
+  ],
+  "new_files": [
+   "out/final_d_sweep_new_1.jsonl",
+   "out/final_d_sweep_new_2.jsonl"
+  ],
+  "seeds": [
+   340,
+   341,
+   342,
+   343,
+   344,
+   345,
+   346,
+   347,
+   348,
+   349,
+   350,
+   351,
+   352,
+   353,
+   354,
+   355,
+   356,
+   357,
+   358,
+   359
+  ],
+  "n": 20,
+  "identical": 0,
+  "differing_seeds": [
+   340,
+   341,
+   342,
+   343,
+   344,
+   345,
+   346,
+   347,
+   348,
+   349,
+   350,
+   351,
+   352,
+   353,
+   354,
+   355,
+   356,
+   357,
+   358,
+   359
+  ],
+  "second_pass_seeds": [
+   340,
+   341,
+   342,
+   343,
+   344,
+   345,
+   346,
+   347,
+   348,
+   349,
+   350,
+   351,
+   352,
+   353,
+   354,
+   355,
+   356,
+   357,
+   358,
+   359
+  ],
+  "differing_without_second_pass": [],
+  "code_sha": {
+   "base": [
+    "417e00f62f33a316"
+   ],
+   "new": [
+    "7f32c28be67497f4"
+   ]
+  },
+  "totals": {
+   "base": {
+    "located": 0,
+    "assembled": 0,
+    "robots_lost": 2,
+    "mean_duration_s": 78.7
+   },
+   "new": {
+    "located": 0,
+    "assembled": 0,
+    "robots_lost": 1,
+    "mean_duration_s": 74.1
+   }
+  },
+  "second_pass_rows": {
+   "340": {
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 85.5,
+     "used_second_pass": true,
+     "first_parked_s": 57.5,
+     "last_parked_s": 60.56,
+     "first_back_s": 63.28,
+     "last_back_s": 63.6,
+     "first_moving_s": 66.0,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 82.7,
+     "used_second_pass": true,
+     "first_parked_s": 57.5,
+     "last_parked_s": 60.56,
+     "first_back_s": 60.28,
+     "last_back_s": 60.56,
+     "first_moving_s": 62.62,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "341": {
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 77.4,
+     "used_second_pass": true,
+     "first_parked_s": 62.08,
+     "last_parked_s": 65.68,
+     "first_back_s": 68.7,
+     "last_back_s": 74.34,
+     "first_moving_s": 70.5,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 71.7,
+     "used_second_pass": true,
+     "first_parked_s": 62.08,
+     "last_parked_s": 65.68,
+     "first_back_s": 65.66,
+     "last_back_s": 65.68,
+     "first_moving_s": 67.7,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "342": {
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 100.0,
+     "used_second_pass": false,
+     "first_parked_s": 55.74,
+     "last_parked_s": 94.88,
+     "first_back_s": null,
+     "last_back_s": null,
+     "first_moving_s": null,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 100.0,
+     "used_second_pass": true,
+     "first_parked_s": 55.74,
+     "last_parked_s": 93.06,
+     "first_back_s": 61.76,
+     "last_back_s": 93.06,
+     "first_moving_s": 63.52,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "343": {
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 1,
+     "duration_s": 76.1,
+     "used_second_pass": true,
+     "first_parked_s": 47.1,
+     "last_parked_s": 47.1,
+     "first_back_s": 50.08,
+     "last_back_s": 50.1,
+     "first_moving_s": 53.28,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      66.62
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 73.1,
+     "used_second_pass": true,
+     "first_parked_s": 47.1,
+     "last_parked_s": 47.1,
+     "first_back_s": 47.1,
+     "last_back_s": 47.1,
+     "first_moving_s": 50.46,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "344": {
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 57.1,
+     "used_second_pass": true,
+     "first_parked_s": 43.04,
+     "last_parked_s": 51.06,
+     "first_back_s": 54.06,
+     "last_back_s": 54.08,
+     "first_moving_s": null,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 54.1,
+     "used_second_pass": true,
+     "first_parked_s": 43.04,
+     "last_parked_s": 51.06,
+     "first_back_s": 49.06,
+     "last_back_s": 51.06,
+     "first_moving_s": null,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "345": {
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 41.9,
+     "used_second_pass": true,
+     "first_parked_s": 35.9,
+     "last_parked_s": 35.9,
+     "first_back_s": 38.88,
+     "last_back_s": 38.9,
+     "first_moving_s": null,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 38.9,
+     "used_second_pass": true,
+     "first_parked_s": 35.9,
+     "last_parked_s": 35.9,
+     "first_back_s": 35.9,
+     "last_back_s": 35.9,
+     "first_moving_s": null,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "346": {
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 95.9,
+     "used_second_pass": true,
+     "first_parked_s": 43.96,
+     "last_parked_s": 66.26,
+     "first_back_s": 68.48,
+     "last_back_s": 68.5,
+     "first_moving_s": 69.82,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 80.9,
+     "used_second_pass": true,
+     "first_parked_s": 43.96,
+     "last_parked_s": 66.54,
+     "first_back_s": 49.98,
+     "last_back_s": 66.54,
+     "first_moving_s": 52.82,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "347": {
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 76.6,
+     "used_second_pass": true,
+     "first_parked_s": 58.5,
+     "last_parked_s": 60.32,
+     "first_back_s": 63.08,
+     "last_back_s": 63.1,
+     "first_moving_s": 65.4,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 72.7,
+     "used_second_pass": true,
+     "first_parked_s": 58.5,
+     "last_parked_s": 60.32,
+     "first_back_s": 59.1,
+     "last_back_s": 60.32,
+     "first_moving_s": 61.86,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "348": {
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 82.7,
+     "used_second_pass": true,
+     "first_parked_s": 53.86,
+     "last_parked_s": 57.58,
+     "first_back_s": 64.04,
+     "last_back_s": 64.06,
+     "first_moving_s": 65.32,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 77.7,
+     "used_second_pass": true,
+     "first_parked_s": 53.86,
+     "last_parked_s": 57.58,
+     "first_back_s": 57.46,
+     "last_back_s": 57.58,
+     "first_moving_s": 60.08,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "349": {
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 82.0,
+     "used_second_pass": true,
+     "first_parked_s": 46.02,
+     "last_parked_s": 46.08,
+     "first_back_s": 49.08,
+     "last_back_s": 49.1,
+     "first_moving_s": 51.9,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 68.4,
+     "used_second_pass": true,
+     "first_parked_s": 46.02,
+     "last_parked_s": 46.08,
+     "first_back_s": 46.08,
+     "last_back_s": 46.1,
+     "first_moving_s": 49.14,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "350": {
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 60.7,
+     "used_second_pass": true,
+     "first_parked_s": 46.66,
+     "last_parked_s": 49.46,
+     "first_back_s": 52.28,
+     "last_back_s": 52.3,
+     "first_moving_s": 54.9,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 57.5,
+     "used_second_pass": true,
+     "first_parked_s": 46.66,
+     "last_parked_s": 49.46,
+     "first_back_s": 49.28,
+     "last_back_s": 49.46,
+     "first_moving_s": 51.96,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "351": {
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 91.0,
+     "used_second_pass": true,
+     "first_parked_s": 58.34,
+     "last_parked_s": 60.16,
+     "first_back_s": 63.06,
+     "last_back_s": 63.08,
+     "first_moving_s": 65.92,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 87.6,
+     "used_second_pass": true,
+     "first_parked_s": 58.34,
+     "last_parked_s": 60.16,
+     "first_back_s": 60.08,
+     "last_back_s": 60.16,
+     "first_moving_s": 63.04,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "352": {
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 86.7,
+     "used_second_pass": true,
+     "first_parked_s": 54.0,
+     "last_parked_s": 54.16,
+     "first_back_s": 57.08,
+     "last_back_s": 57.1,
+     "first_moving_s": 59.9,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 82.7,
+     "used_second_pass": true,
+     "first_parked_s": 54.0,
+     "last_parked_s": 54.16,
+     "first_back_s": 54.1,
+     "last_back_s": 54.16,
+     "first_moving_s": 57.62,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "353": {
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 83.1,
+     "used_second_pass": true,
+     "first_parked_s": 63.98,
+     "last_parked_s": 67.48,
+     "first_back_s": 70.28,
+     "last_back_s": 70.3,
+     "first_moving_s": 73.66,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 79.7,
+     "used_second_pass": true,
+     "first_parked_s": 63.98,
+     "last_parked_s": 67.48,
+     "first_back_s": 67.28,
+     "last_back_s": 67.48,
+     "first_moving_s": 69.16,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "354": {
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 75.7,
+     "used_second_pass": true,
+     "first_parked_s": 51.38,
+     "last_parked_s": 55.7,
+     "first_back_s": 58.68,
+     "last_back_s": 59.04,
+     "first_moving_s": 59.74,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 72.7,
+     "used_second_pass": true,
+     "first_parked_s": 51.38,
+     "last_parked_s": 55.7,
+     "first_back_s": 55.68,
+     "last_back_s": 55.7,
+     "first_moving_s": 56.44,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "355": {
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 92.9,
+     "used_second_pass": true,
+     "first_parked_s": 56.38,
+     "last_parked_s": 86.06,
+     "first_back_s": 89.84,
+     "last_back_s": 89.86,
+     "first_moving_s": null,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 88.6,
+     "used_second_pass": true,
+     "first_parked_s": 56.38,
+     "last_parked_s": 85.62,
+     "first_back_s": 62.4,
+     "last_back_s": 85.62,
+     "first_moving_s": 71.88,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "356": {
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 99.1,
+     "used_second_pass": true,
+     "first_parked_s": 59.34,
+     "last_parked_s": 89.04,
+     "first_back_s": 91.88,
+     "last_back_s": 91.9,
+     "first_moving_s": 93.7,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 100.0,
+     "used_second_pass": true,
+     "first_parked_s": 59.34,
+     "last_parked_s": 61.32,
+     "first_back_s": 65.36,
+     "last_back_s": 65.44,
+     "first_moving_s": 66.6,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "357": {
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 66.5,
+     "used_second_pass": true,
+     "first_parked_s": 46.3,
+     "last_parked_s": 46.4,
+     "first_back_s": 49.46,
+     "last_back_s": 49.48,
+     "first_moving_s": 52.94,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 63.3,
+     "used_second_pass": true,
+     "first_parked_s": 46.3,
+     "last_parked_s": 46.4,
+     "first_back_s": 46.4,
+     "last_back_s": 46.46,
+     "first_moving_s": 49.8,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "358": {
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 1,
+     "duration_s": 77.3,
+     "used_second_pass": true,
+     "first_parked_s": 56.12,
+     "last_parked_s": 56.72,
+     "first_back_s": 59.68,
+     "last_back_s": 59.7,
+     "first_moving_s": 61.74,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      50.36,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 1,
+     "duration_s": 72.6,
+     "used_second_pass": true,
+     "first_parked_s": 56.12,
+     "last_parked_s": 56.72,
+     "first_back_s": 56.68,
+     "last_back_s": 56.72,
+     "first_moving_s": 58.42,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      50.36,
+      null,
+      null
+     ]
+    }
+   },
+   "359": {
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 65.9,
+     "used_second_pass": true,
+     "first_parked_s": 44.98,
+     "last_parked_s": 53.4,
+     "first_back_s": 62.88,
+     "last_back_s": 62.9,
+     "first_moving_s": null,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 57.2,
+     "used_second_pass": true,
+     "first_parked_s": 44.98,
+     "last_parked_s": 53.36,
+     "first_back_s": 51.0,
+     "last_back_s": 54.2,
+     "first_moving_s": 55.08,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    }
+   }
+  },
+  "sweep_rows": [
+   {
+    "seed": 340,
+    "t0": 57.5,
+    "hole_m2": 0.0,
+    "base_mean_cover_s": null,
+    "new_mean_cover_s": null,
+    "base_never_m2": 0.0,
+    "new_never_m2": 0.0,
+    "base_last_cover_s": null,
+    "new_last_cover_s": null,
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 85.5,
+     "used_second_pass": true,
+     "first_parked_s": 57.5,
+     "last_parked_s": 60.56,
+     "first_back_s": 63.28,
+     "last_back_s": 63.6,
+     "first_moving_s": 66.0,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 82.7,
+     "used_second_pass": true,
+     "first_parked_s": 57.5,
+     "last_parked_s": 60.56,
+     "first_back_s": 60.28,
+     "last_back_s": 60.56,
+     "first_moving_s": 62.62,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "base_cannot_gain_s": 60.6
+   },
+   {
+    "seed": 341,
+    "t0": 62.08,
+    "hole_m2": 0.0,
+    "base_mean_cover_s": null,
+    "new_mean_cover_s": null,
+    "base_never_m2": 0.0,
+    "new_never_m2": 0.0,
+    "base_last_cover_s": null,
+    "new_last_cover_s": null,
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 77.4,
+     "used_second_pass": true,
+     "first_parked_s": 62.08,
+     "last_parked_s": 65.68,
+     "first_back_s": 68.7,
+     "last_back_s": 74.34,
+     "first_moving_s": 70.5,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 71.7,
+     "used_second_pass": true,
+     "first_parked_s": 62.08,
+     "last_parked_s": 65.68,
+     "first_back_s": 65.66,
+     "last_back_s": 65.68,
+     "first_moving_s": 67.7,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "base_cannot_gain_s": 65.8
+   },
+   {
+    "seed": 342,
+    "t0": 55.74,
+    "hole_m2": 0.0,
+    "base_mean_cover_s": null,
+    "new_mean_cover_s": null,
+    "base_never_m2": 0.0,
+    "new_never_m2": 0.0,
+    "base_last_cover_s": null,
+    "new_last_cover_s": null,
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 100.0,
+     "used_second_pass": false,
+     "first_parked_s": 55.74,
+     "last_parked_s": 94.88,
+     "first_back_s": null,
+     "last_back_s": null,
+     "first_moving_s": null,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 100.0,
+     "used_second_pass": true,
+     "first_parked_s": 55.74,
+     "last_parked_s": 93.06,
+     "first_back_s": 61.76,
+     "last_back_s": 93.06,
+     "first_moving_s": 63.52,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "base_cannot_gain_s": 86.0
+   },
+   {
+    "seed": 343,
+    "t0": 47.1,
+    "hole_m2": 0.0,
+    "base_mean_cover_s": null,
+    "new_mean_cover_s": null,
+    "base_never_m2": 0.0,
+    "new_never_m2": 0.0,
+    "base_last_cover_s": null,
+    "new_last_cover_s": null,
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 1,
+     "duration_s": 76.1,
+     "used_second_pass": true,
+     "first_parked_s": 47.1,
+     "last_parked_s": 47.1,
+     "first_back_s": 50.08,
+     "last_back_s": 50.1,
+     "first_moving_s": 53.28,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      66.62
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 73.1,
+     "used_second_pass": true,
+     "first_parked_s": 47.1,
+     "last_parked_s": 47.1,
+     "first_back_s": 47.1,
+     "last_back_s": 47.1,
+     "first_moving_s": 50.46,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "base_cannot_gain_s": 47.2
+   },
+   {
+    "seed": 344,
+    "t0": 43.04,
+    "hole_m2": 0.0,
+    "base_mean_cover_s": null,
+    "new_mean_cover_s": null,
+    "base_never_m2": 0.0,
+    "new_never_m2": 0.0,
+    "base_last_cover_s": null,
+    "new_last_cover_s": null,
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 57.1,
+     "used_second_pass": true,
+     "first_parked_s": 43.04,
+     "last_parked_s": 51.06,
+     "first_back_s": 54.06,
+     "last_back_s": 54.08,
+     "first_moving_s": null,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 54.1,
+     "used_second_pass": true,
+     "first_parked_s": 43.04,
+     "last_parked_s": 51.06,
+     "first_back_s": 49.06,
+     "last_back_s": 51.06,
+     "first_moving_s": null,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "base_cannot_gain_s": 49.2
+   },
+   {
+    "seed": 345,
+    "t0": 35.9,
+    "hole_m2": 0.0,
+    "base_mean_cover_s": null,
+    "new_mean_cover_s": null,
+    "base_never_m2": 0.0,
+    "new_never_m2": 0.0,
+    "base_last_cover_s": null,
+    "new_last_cover_s": null,
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 41.9,
+     "used_second_pass": true,
+     "first_parked_s": 35.9,
+     "last_parked_s": 35.9,
+     "first_back_s": 38.88,
+     "last_back_s": 38.9,
+     "first_moving_s": null,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 38.9,
+     "used_second_pass": true,
+     "first_parked_s": 35.9,
+     "last_parked_s": 35.9,
+     "first_back_s": 35.9,
+     "last_back_s": 35.9,
+     "first_moving_s": null,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "base_cannot_gain_s": 36.0
+   },
+   {
+    "seed": 346,
+    "t0": 43.96,
+    "hole_m2": 3.12,
+    "base_mean_cover_s": 58.6,
+    "new_mean_cover_s": 55.2,
+    "base_never_m2": 0.0,
+    "new_never_m2": 0.0,
+    "base_last_cover_s": 87.5,
+    "new_last_cover_s": 73.0,
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 95.9,
+     "used_second_pass": true,
+     "first_parked_s": 43.96,
+     "last_parked_s": 66.26,
+     "first_back_s": 68.48,
+     "last_back_s": 68.5,
+     "first_moving_s": 69.82,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 80.9,
+     "used_second_pass": true,
+     "first_parked_s": 43.96,
+     "last_parked_s": 66.54,
+     "first_back_s": 49.98,
+     "last_back_s": 66.54,
+     "first_moving_s": 52.82,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "base_cannot_gain_s": 66.4
+   },
+   {
+    "seed": 347,
+    "t0": 58.5,
+    "hole_m2": 0.0,
+    "base_mean_cover_s": null,
+    "new_mean_cover_s": null,
+    "base_never_m2": 0.0,
+    "new_never_m2": 0.0,
+    "base_last_cover_s": null,
+    "new_last_cover_s": null,
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 76.6,
+     "used_second_pass": true,
+     "first_parked_s": 58.5,
+     "last_parked_s": 60.32,
+     "first_back_s": 63.08,
+     "last_back_s": 63.1,
+     "first_moving_s": 65.4,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 72.7,
+     "used_second_pass": true,
+     "first_parked_s": 58.5,
+     "last_parked_s": 60.32,
+     "first_back_s": 59.1,
+     "last_back_s": 60.32,
+     "first_moving_s": 61.86,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "base_cannot_gain_s": 58.6
+   },
+   {
+    "seed": 348,
+    "t0": 53.86,
+    "hole_m2": 0.0,
+    "base_mean_cover_s": null,
+    "new_mean_cover_s": null,
+    "base_never_m2": 0.0,
+    "new_never_m2": 0.0,
+    "base_last_cover_s": null,
+    "new_last_cover_s": null,
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 82.7,
+     "used_second_pass": true,
+     "first_parked_s": 53.86,
+     "last_parked_s": 57.58,
+     "first_back_s": 64.04,
+     "last_back_s": 64.06,
+     "first_moving_s": 65.32,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 77.7,
+     "used_second_pass": true,
+     "first_parked_s": 53.86,
+     "last_parked_s": 57.58,
+     "first_back_s": 57.46,
+     "last_back_s": 57.58,
+     "first_moving_s": 60.08,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "base_cannot_gain_s": 57.6
+   },
+   {
+    "seed": 349,
+    "t0": 46.02,
+    "hole_m2": 0.0,
+    "base_mean_cover_s": null,
+    "new_mean_cover_s": null,
+    "base_never_m2": 0.0,
+    "new_never_m2": 0.0,
+    "base_last_cover_s": null,
+    "new_last_cover_s": null,
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 82.0,
+     "used_second_pass": true,
+     "first_parked_s": 46.02,
+     "last_parked_s": 46.08,
+     "first_back_s": 49.08,
+     "last_back_s": 49.1,
+     "first_moving_s": 51.9,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 68.4,
+     "used_second_pass": true,
+     "first_parked_s": 46.02,
+     "last_parked_s": 46.08,
+     "first_back_s": 46.08,
+     "last_back_s": 46.1,
+     "first_moving_s": 49.14,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "base_cannot_gain_s": 46.2
+   },
+   {
+    "seed": 350,
+    "t0": 46.66,
+    "hole_m2": 0.0,
+    "base_mean_cover_s": null,
+    "new_mean_cover_s": null,
+    "base_never_m2": 0.0,
+    "new_never_m2": 0.0,
+    "base_last_cover_s": null,
+    "new_last_cover_s": null,
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 60.7,
+     "used_second_pass": true,
+     "first_parked_s": 46.66,
+     "last_parked_s": 49.46,
+     "first_back_s": 52.28,
+     "last_back_s": 52.3,
+     "first_moving_s": 54.9,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 57.5,
+     "used_second_pass": true,
+     "first_parked_s": 46.66,
+     "last_parked_s": 49.46,
+     "first_back_s": 49.28,
+     "last_back_s": 49.46,
+     "first_moving_s": 51.96,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "base_cannot_gain_s": 49.6
+   },
+   {
+    "seed": 351,
+    "t0": 58.34,
+    "hole_m2": 0.19,
+    "base_mean_cover_s": 69.0,
+    "new_mean_cover_s": 65.8,
+    "base_never_m2": 0.0,
+    "new_never_m2": 0.0,
+    "base_last_cover_s": 69.6,
+    "new_last_cover_s": 66.4,
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 91.0,
+     "used_second_pass": true,
+     "first_parked_s": 58.34,
+     "last_parked_s": 60.16,
+     "first_back_s": 63.06,
+     "last_back_s": 63.08,
+     "first_moving_s": 65.92,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 87.6,
+     "used_second_pass": true,
+     "first_parked_s": 58.34,
+     "last_parked_s": 60.16,
+     "first_back_s": 60.08,
+     "last_back_s": 60.16,
+     "first_moving_s": 63.04,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "base_cannot_gain_s": 60.2
+   },
+   {
+    "seed": 352,
+    "t0": 54.0,
+    "hole_m2": 0.0,
+    "base_mean_cover_s": null,
+    "new_mean_cover_s": null,
+    "base_never_m2": 0.0,
+    "new_never_m2": 0.0,
+    "base_last_cover_s": null,
+    "new_last_cover_s": null,
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 86.7,
+     "used_second_pass": true,
+     "first_parked_s": 54.0,
+     "last_parked_s": 54.16,
+     "first_back_s": 57.08,
+     "last_back_s": 57.1,
+     "first_moving_s": 59.9,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 82.7,
+     "used_second_pass": true,
+     "first_parked_s": 54.0,
+     "last_parked_s": 54.16,
+     "first_back_s": 54.1,
+     "last_back_s": 54.16,
+     "first_moving_s": 57.62,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "base_cannot_gain_s": 54.0
+   },
+   {
+    "seed": 353,
+    "t0": 63.98,
+    "hole_m2": 0.0,
+    "base_mean_cover_s": null,
+    "new_mean_cover_s": null,
+    "base_never_m2": 0.0,
+    "new_never_m2": 0.0,
+    "base_last_cover_s": null,
+    "new_last_cover_s": null,
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 83.1,
+     "used_second_pass": true,
+     "first_parked_s": 63.98,
+     "last_parked_s": 67.48,
+     "first_back_s": 70.28,
+     "last_back_s": 70.3,
+     "first_moving_s": 73.66,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 79.7,
+     "used_second_pass": true,
+     "first_parked_s": 63.98,
+     "last_parked_s": 67.48,
+     "first_back_s": 67.28,
+     "last_back_s": 67.48,
+     "first_moving_s": 69.16,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "base_cannot_gain_s": 67.2
+   },
+   {
+    "seed": 354,
+    "t0": 51.38,
+    "hole_m2": 0.0,
+    "base_mean_cover_s": null,
+    "new_mean_cover_s": null,
+    "base_never_m2": 0.0,
+    "new_never_m2": 0.0,
+    "base_last_cover_s": null,
+    "new_last_cover_s": null,
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 75.7,
+     "used_second_pass": true,
+     "first_parked_s": 51.38,
+     "last_parked_s": 55.7,
+     "first_back_s": 58.68,
+     "last_back_s": 59.04,
+     "first_moving_s": 59.74,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 72.7,
+     "used_second_pass": true,
+     "first_parked_s": 51.38,
+     "last_parked_s": 55.7,
+     "first_back_s": 55.68,
+     "last_back_s": 55.7,
+     "first_moving_s": 56.44,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "base_cannot_gain_s": 55.8
+   },
+   {
+    "seed": 355,
+    "t0": 56.38,
+    "hole_m2": 0.0,
+    "base_mean_cover_s": null,
+    "new_mean_cover_s": null,
+    "base_never_m2": 0.0,
+    "new_never_m2": 0.0,
+    "base_last_cover_s": null,
+    "new_last_cover_s": null,
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 92.9,
+     "used_second_pass": true,
+     "first_parked_s": 56.38,
+     "last_parked_s": 86.06,
+     "first_back_s": 89.84,
+     "last_back_s": 89.86,
+     "first_moving_s": null,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 88.6,
+     "used_second_pass": true,
+     "first_parked_s": 56.38,
+     "last_parked_s": 85.62,
+     "first_back_s": 62.4,
+     "last_back_s": 85.62,
+     "first_moving_s": 71.88,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "base_cannot_gain_s": 80.4
+   },
+   {
+    "seed": 356,
+    "t0": 59.34,
+    "hole_m2": 0.19,
+    "base_mean_cover_s": 70.3,
+    "new_mean_cover_s": 64.9,
+    "base_never_m2": 0.0,
+    "new_never_m2": 0.0,
+    "base_last_cover_s": 75.8,
+    "new_last_cover_s": 67.6,
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 99.1,
+     "used_second_pass": true,
+     "first_parked_s": 59.34,
+     "last_parked_s": 89.04,
+     "first_back_s": 91.88,
+     "last_back_s": 91.9,
+     "first_moving_s": 93.7,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 100.0,
+     "used_second_pass": true,
+     "first_parked_s": 59.34,
+     "last_parked_s": 61.32,
+     "first_back_s": 65.36,
+     "last_back_s": 65.44,
+     "first_moving_s": 66.6,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "base_cannot_gain_s": 89.2
+   },
+   {
+    "seed": 357,
+    "t0": 46.3,
+    "hole_m2": 0.0,
+    "base_mean_cover_s": null,
+    "new_mean_cover_s": null,
+    "base_never_m2": 0.0,
+    "new_never_m2": 0.0,
+    "base_last_cover_s": null,
+    "new_last_cover_s": null,
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 66.5,
+     "used_second_pass": true,
+     "first_parked_s": 46.3,
+     "last_parked_s": 46.4,
+     "first_back_s": 49.46,
+     "last_back_s": 49.48,
+     "first_moving_s": 52.94,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 63.3,
+     "used_second_pass": true,
+     "first_parked_s": 46.3,
+     "last_parked_s": 46.4,
+     "first_back_s": 46.4,
+     "last_back_s": 46.46,
+     "first_moving_s": 49.8,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "base_cannot_gain_s": 46.4
+   },
+   {
+    "seed": 358,
+    "t0": 56.12,
+    "hole_m2": 0.0,
+    "base_mean_cover_s": null,
+    "new_mean_cover_s": null,
+    "base_never_m2": 0.0,
+    "new_never_m2": 0.0,
+    "base_last_cover_s": null,
+    "new_last_cover_s": null,
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 1,
+     "duration_s": 77.3,
+     "used_second_pass": true,
+     "first_parked_s": 56.12,
+     "last_parked_s": 56.72,
+     "first_back_s": 59.68,
+     "last_back_s": 59.7,
+     "first_moving_s": 61.74,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      50.36,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 1,
+     "duration_s": 72.6,
+     "used_second_pass": true,
+     "first_parked_s": 56.12,
+     "last_parked_s": 56.72,
+     "first_back_s": 56.68,
+     "last_back_s": 56.72,
+     "first_moving_s": 58.42,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      50.36,
+      null,
+      null
+     ]
+    },
+    "base_cannot_gain_s": 56.8
+   },
+   {
+    "seed": 359,
+    "t0": 44.98,
+    "hole_m2": 0.0,
+    "base_mean_cover_s": null,
+    "new_mean_cover_s": null,
+    "base_never_m2": 0.0,
+    "new_never_m2": 0.0,
+    "base_last_cover_s": null,
+    "new_last_cover_s": null,
+    "base": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 65.9,
+     "used_second_pass": true,
+     "first_parked_s": 44.98,
+     "last_parked_s": 53.4,
+     "first_back_s": 62.88,
+     "last_back_s": 62.9,
+     "first_moving_s": null,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "new": {
+     "located": false,
+     "t_located_s": null,
+     "assembled": false,
+     "t_assembled_s": null,
+     "robots_lost": 0,
+     "duration_s": 57.2,
+     "used_second_pass": true,
+     "first_parked_s": 44.98,
+     "last_parked_s": 53.36,
+     "first_back_s": 51.0,
+     "last_back_s": 54.2,
+     "first_moving_s": 55.08,
+     "first_own_signal_s": null,
+     "t_down_s": [
+      null,
+      null,
+      null,
+      null
+     ]
+    },
+    "base_cannot_gain_s": 53.4
+   }
+  ],
+  "sweep_summary": {
+   "layouts_with_a_hole": 3,
+   "mean_cover_s_base": 66.0,
+   "mean_cover_s_new": 62.0,
+   "paired_diff_mean_s": -4.0,
+   "paired_diff_median_s": -3.4,
+   "faster": 3,
+   "slower": 0,
+   "same": 0,
+   "never_m2_base": 0.0,
+   "never_m2_new": 0.0
+  }
+ }
+}

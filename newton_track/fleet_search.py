@@ -118,7 +118,12 @@ COV_EVERY = 5  # the map rides on every fifth heartbeat
 TAKE_OVER = 1.0  # a robot this much nearer to a teammate's claim than the teammate is may claim that ground itself
 LOCAL = 3.0  # a robot finishes what is within this distance before it looks further afield
 MIN_GAIN = 4  # squares (0.25 m2) of unsearched ground that make a point worth walking to
-SETTLED = 3 * POLICY_HZ  # the team must have stood at the far end this long before anyone goes back
+# How long the first robot to reach the far end waits there for teammates still
+# short of it. With the beacon out of reach and the reflex on (seeds 140-159,
+# n = 20) the last robot parked within 4.5 s of the first in 14 layouts and
+# 8 to 42 s after it in the other 6: pulled along the far line by the lane
+# split, queueing behind a parked teammate, or working round ice.
+WAIT = 6 * POLICY_HZ
 HOVER = 0.05  # a sweeper this close to the line where it parks is as good as parked
 PART = (0.7, 1.0)  # closer than the first to a teammate, walk straight apart until the second
 CLOSE_UP = 2.0  # a robot with nothing to search waits among the searchers, no nearer than this to where any of them is heading
@@ -436,8 +441,8 @@ class RobotAgent:
     Now each robot keeps a map of the ground it believes has been searched
     (`cov`): every square that has been wholly within range of a position it
     stood at itself or heard a standing teammate report. When it stands at the
-    far end with no signal, and every teammate it knows of has stood there too
-    for SETTLED (`_first_pass_over`), it goes back:
+    far end with no signal, and every teammate it knows of has got there too
+    or has been waited for long enough (`_first_pass_over`), it goes back:
 
       - if a teammate stands within PART of it, it first walks straight
         away from that teammate, forward or back, without turning
@@ -474,11 +479,12 @@ class RobotAgent:
     robot still believes unsearched when it stops (`unsearched_m2`) is those
     discs, plus anything it wrote off.
 
-    The second pass starts only after the old code would have ended the
-    mission (everyone parked for three seconds), so a mission that hears the
-    beacon on the first pass runs exactly as it did. `Mission._score` needed
-    one change for a second pass to exist: a robot at the far end that has not
-    yet ruled out going back (`pending`) does not count as parked.
+    The second pass starts only when no robot is still walking up the field,
+    so a mission that hears the beacon on the first pass runs exactly as it
+    did (the one exception, a robot more than WAIT behind the first to
+    arrive, is in `_first_pass_over`). `Mission._score` needed one change for
+    a second pass to exist: a robot at the far end that has not yet ruled out
+    going back (`pending`) does not count as parked.
     """
 
     relay = True
@@ -515,6 +521,8 @@ class RobotAgent:
         self.following = False  # that point was chosen to be near teammates who are still searching
         self.parked_since = None  # first tick of my current unbroken spell parked ("hold", "down", or hovering on the line)
         self.lost_seen = {}  # id -> tick I learned it was down
+        self.arrived = set()  # teammates whose first pass is over: heard parked at the far end, or on a second pass
+        self.far_since = None  # the tick I first stood at the far end myself
         self.unsearched_m2 = None  # by my map, at my last look
 
     # ---- shared rules: every agent computes these from the same roster ----
@@ -632,6 +640,8 @@ class RobotAgent:
                 self._merge_news(t, m)
         for r in self.lost:
             self.lost_seen.setdefault(r, t)
+        if self.cov is not None:
+            self._watch()
 
         beat = t % HEARTBEAT == self.id % HEARTBEAT
         if down:
@@ -708,7 +718,15 @@ class RobotAgent:
 
         # -- second pass: the team reached the far end without a signal --
         if self.pass2:
-            return self._second_pass(t, me, beat), out
+            cmd = self._second_pass(t, me, beat)
+            if beat:
+                # Say what I decided on this tick, not on the last one. A claim
+                # one heartbeat stale let two robots each give way to a claim
+                # the other had already dropped: on seed 158 the two survivors
+                # both left the 2.4 m seam between their lanes for the field
+                # edges and came back for it 19 s later.
+                pose_msg["claim"] = self.claim
+            return cmd, out
 
         # -- sweep --
         if me[1] >= y1 - 0.3:
@@ -716,6 +734,8 @@ class RobotAgent:
             self.target = None
             if self.coordinated:
                 self.pending = True  # not finished: the mission must not end on my account
+                if self.far_since is None:
+                    self.far_since = t
                 self.pass2 = self._first_pass_over(t)
             return (0.0, 0.0, 0.0), out
         self.role = "sweep"
@@ -794,50 +814,63 @@ class RobotAgent:
         g = _SearchGrid.get()
         self.cov |= (g.cx - x) ** 2 + (g.cy - y) ** 2 <= COVER_RANGE**2
 
+    def _watch(self):
+        """Note which teammates have finished their first pass. Kept as a set
+        that only grows: a robot parked at the far end steps off the line and
+        back onto it as it drifts, and its first pass is no less over."""
+        for r, i in self.roster.items():
+            if i.get("p2") or (i.get("since") is not None and i["role"] != "down" and i["y"] >= FIELD[3] - 0.5):
+                self.arrived.add(r)
+
     def _first_pass_over(self, t: int) -> bool:
-        """Has every robot I know of stood parked, all at once, for SETTLED?
+        """Is the first pass over for the team?
 
-        Called while I am parked at the far end with no signal. Each heartbeat
-        says since when its sender has been parked without a break
-        (`parked_since`), and a heartbeat stamped `s` vouches for its sender up
-        to tick s - 2: one tick for the radio, one because a heartbeat is
-        written before its sender decides. So "all of us were parked on every
-        tick from a to b" is something I can know, a little late. I ask for
-        b - a >= SETTLED, which is exactly the rule that used to END the
-        mission. On a radio that reaches everyone a second pass therefore
-        starts only where there used to be no mission left, and anything that
-        happened before, first signal included, is untouched.
+        Called while I am parked at the far end with no signal. A teammate is
+        done once I have heard it parked at the far end (each heartbeat says
+        since when its sender has been parked, `parked_since`) or on its
+        second pass. From there it has nothing left to sweep: it stands, or
+        steps back up to the line it drifted off, and no ground comes into its
+        range that was not in range on the way up. So nothing the first pass
+        could still find is lost by going back the moment the last robot
+        arrives, and a mission that hears the beacon on the first pass runs as
+        it did: nobody has moved early.
 
-        One exception, and it is deliberate. A robot hovering on the parking
-        line (see `step`) was never parked for three seconds running, so the
-        old mission did not end: the team stood at the far end until the clock
-        ran out. Here it counts as parked and the second pass starts.
+        This used to ask for more: all of us parked at the same time for three
+        seconds running, which was the rule that ended the old mission. That
+        cost 3 s on every second pass, and more whenever one robot stepped off
+        the line and back inside the three seconds (seed 214: 7.4 s between
+        the last arrival and the first robot going back, with the dig team
+        assembled at 97.1 s of 100).
+
+        The wait is bounded. A robot that never arrived used to hold the
+        whole team at the far end until the clock ran out, and one that took
+        30 s over the last two metres held it for 30 s. Now a robot goes back
+        once it has stood at the far end for WAIT, whoever is missing, and so
+        does every robot that hears a teammate on its second pass, so the
+        team leaves together on the clock of whoever arrived first. A robot
+        left behind carries on with its own first pass and joins in when it
+        gets to the far end. This is the one case where a mission that finds
+        the beacon on the first pass can run differently: the late robot
+        finds it more than WAIT after the first robot parked.
 
         On a radio with a range a teammate can be out of earshot. One that has
         been silent for ROSTER_AFTER, or was never heard, is treated as gone,
-        as the sweep already treats it. One that is already on its second pass
-        has been through this test itself.
+        as the sweep already treats it.
         """
         if self.parked_since is None:
             return False
-        since, until = self.parked_since, t - 1
+        go = t - self.far_since > WAIT or any(i.get("p2") for i in self._heard(t).values())
         for r in range(self.n):
-            if r == self.id:
-                continue
-            if r in self.lost:  # down for good, from the tick before I heard of it at the latest
-                since = max(since, self.lost_seen.get(r, t) - 1)
+            if r == self.id or r in self.lost or r in self.arrived:
                 continue
             i = self.roster.get(r)
             if i is None or t - i["t"] > ROSTER_AFTER:
                 if t <= ROSTER_AFTER:
                     return False  # too early to call a robot I never heard gone
                 continue
-            if i.get("p2"):
-                continue
-            if i.get("since") is None:
-                return False  # still on its first pass (or busy with something I have not heard about)
-            since, until = max(since, i["since"]), min(until, i["t"] - 2)
-        return until - since >= SETTLED
+            if not go:
+                return False  # still on its way up, and not yet waited for long enough
+        return True
 
     def _second_pass(self, t: int, me, beat: bool):
         pos = (me[0], me[1])

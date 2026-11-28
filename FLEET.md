@@ -426,7 +426,8 @@ What each robot does, from its own track and what it has heard:
 
 One line of scoring changed: a robot parked at the far end that has not yet
 ruled out going back does not count as parked for good. On a clean radio a
-second pass cannot start before the old code would have ended the mission.
+second pass could not start before the old code would have ended the mission.
+That rule has since been relaxed ("Starting the second pass sooner").
 
 Four robots, coordinated, seeds 140-159, n = 20 per cell, paired:
 
@@ -466,11 +467,85 @@ one. Those missions run 67.4 s to 77.3 s.
   seed, an illustration) and on the unsearched-ground measure.
 - **Time is tight.** A hole far from the top found after a long first pass
   will often be located but not assembled inside 100 s.
-- **A robot that never reaches the far end still blocks the second pass for
-  everyone**, 3 of 60 layouts. A bounded wait would fix it and was left out to
-  keep first-pass missions identical.
+- **A robot that never reached the far end blocked the second pass for
+  everyone**, 3 of 60 layouts. Fixed by the bounded wait below.
 - **Not run**: packet loss, team sizes other than four, and the radio study's
   candidate agents on top of this.
+
+### Starting the second pass sooner
+
+Seed 214 assembled at 97.1 s of 100 and seed 30 at 94.1 s, so an agent timed
+the hand-off from first pass to second and shortened it. Rows are in
+`results/fleet_pass2_latency.json`.
+
+Where the time went, on the three clean-radio, reflex-on missions known to
+need a second pass (seeds 21, 30, 214):
+
+| Phase | Seconds |
+|---|---|
+| First robot parks at the far end | 63.8 to 65.8 |
+| Wait for the last robot to park | 3.0, 3.5, 6.2 |
+| Last arrival to first robot going back | 2.3, 2.8, 7.4 |
+| Turning round | 1.7 to 2.2 |
+| Walking until the first signal | 2.6, 12.3, 9.4 |
+| Signal to located | 4.7 to 4.9 |
+| Located to assembled | 1.3, 3.0, 5.3 |
+
+- **The first pass is the big term.** With the reflex on it takes about 65 s
+  of the 100, so the second pass has 35 s at most.
+- **The "everyone parked for 3 s" rule cost more than 3 s.** A parked robot
+  that drifts off the line and steps back restarts the clock: 7.4 s on seed
+  214.
+- **One robot could hold everyone.** With the beacon out of reach (seeds
+  140-159) the last robot parked a median 2.7 s after the first, but 32 to 42 s
+  after on three layouts, which ran out the clock.
+
+Three changes:
+
+1. A teammate's first pass is over once it has been heard parked at the far
+   end. The second pass starts when the last robot arrives, with no 3 s rule.
+2. A robot that has stood at the far end for 6 s goes back whoever is missing,
+   and so does any robot that hears a teammate on its second pass. The late
+   robot finishes its own first pass and joins.
+3. The heartbeat carries the claim decided on that tick, not the one before. A
+   stale claim had let two robots each give way to the other (19 s lost on
+   seed 158).
+
+Fresh seeds 340-359, n = 20 per cell, before and after on the same seeds,
+scored once. "Identical" means the same hash over every robot's pose at every
+tick.
+
+| Cell | Located | Assembled | Robots lost | Used a second pass | Identical |
+|---|---|---|---|---|---|
+| reflex on, clean radio | 20 to 20 | 20 to 20 | 0 to 0 | 0 | 20/20 |
+| reflex off, clean radio | 20 to 20 | 14 to 14 | 20 to 20 | 0 | 20/20 |
+| reflex on, 3 m radio | 20 to 20 | 20 to 20 | 0 to 0 | 5 | 15/20 |
+| beacon out of reach, reflex on | - | - | 2 to 1 | 20 | 0/20 |
+
+- **No outcome changed on fresh seeds**, because no fresh clean-radio mission
+  needed a second pass. The gain there rests on seeds the agent tuned on.
+- **With the beacon out of reach the second pass starts sooner in 19 of 19**
+  layouts where both versions start one: median 3.0 s, mean 7.2 s, most 27.4 s.
+  One layout that was blocked for the whole mission (seed 342) now starts at
+  61.8 s. Missions end at 74.1 s on average, from 78.7 s.
+- **Checked on the merged code against the main tables**: on seeds 200-219 and
+  20-39, reflex and radio on, 37 of 40 missions are identical and the other
+  three are the second-pass ones. Seed 214 assembles at 90.7 s (was 97.1), seed
+  21 at 82.2 s (was 82.9), seed 30 at 93.7 s (was 94.1). The tables under
+  "Results" were not regenerated for this; those three rows are a few seconds
+  late in them.
+- **Seed 30 is still close to the limit.** The 2.3 s gained on locating was
+  lost again while the helpers converged.
+- **What got worse**: turning round starts about 0.5 s slower. On seed 356,
+  beacon out of reach, a late robot met a second-pass robot in its lane, then
+  ice, and had not parked by 100 s (it parked at 89.0 s before). On seed 143
+  with the reflex off, a tuning seed, three robots were lost where two were.
+- **One case can now differ on the first pass**: a robot that finds the beacon
+  more than 6 s after the first robot parked. It did not happen in the 60
+  fresh beacon-in-reach missions.
+- **Left alone, outside the agent's part of the code**: the first pass itself,
+  and the lane split at the far end, which pulls the last robot sideways along
+  the line and is the cause of most of the waiting.
 
 ## The reflex, looked at harder
 
