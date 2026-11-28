@@ -98,22 +98,39 @@ Scoring. **Located**: a robot declared the burial point within 1 m of the truth.
 for a full second. Three is fixed, so a team that has lost two of four cannot
 assemble. A mission has 100 simulated seconds.
 
-Which seeds count. The planner was debugged on seeds 0-39 (and looked at on 40
-and 42), so those cannot score it honestly. **Seeds 60-79 are the result.** The
-other two sets are shown so the gap between tuned-on and untouched is visible.
+Which seeds count. Every table below was rerun on the code as it stands now
+(commit 37d659f: relaying, the second pass and the reworked reflex), 320
+missions. **Seeds 200-219 are the result**: nothing was tuned on them and they
+were scored once. Seeds 60-79 were held out while the planner was written, and
+were then used as the regression set for every later change, so they are no
+longer untouched. The planner was debugged on seeds 0-39. Those three sets are
+shown so the gap between used and fresh is visible.
 
 <!-- BEGIN GENERATED (newton_track/report.py, fleet section) -->
 
-### Fleet search, seeds 60-79 (held out: nothing was tuned on these)
+### Fleet search, seeds 200-219 (held out: scored once, on the final code)
 
 4 robots, snow mu 0.4, ice mu 0.08, three ice patches. Every row is the same seeds.
 
 | slip reflex | radio | beacon located | dig team assembled | robots lost per mission | median s to locate | median s to assemble |
 |---|---|---|---|---|---|---|
-| off | on | 19/20 | 11/20 | 1.45 | 25.7 | 28.9 |
+| off | on | 20/20 | 15/20 | 1.10 | 25.8 | 32.0 |
+| off | off | 17/20 | 0/20 | 1.30 | 24.2 | - |
+| on | on | 20/20 | 20/20 | 0.05 | 31.4 | 37.2 |
+| on | off | 20/20 | 0/20 | 0.10 | 25.6 | - |
+
+- Reflex off, radio on, did not assemble: seed 209 (lost 2), seed 211 (lost 3), seed 214 (lost 2), seed 217 (lost 2), seed 218 (lost 2).
+
+### Fleet search, seeds 60-79 (held out for the planner, then used to check later changes)
+
+4 robots, snow mu 0.4, ice mu 0.08, three ice patches. Every row is the same seeds.
+
+| slip reflex | radio | beacon located | dig team assembled | robots lost per mission | median s to locate | median s to assemble |
+|---|---|---|---|---|---|---|
+| off | on | 20/20 | 11/20 | 1.45 | 26.4 | 28.9 |
 | off | off | 18/20 | 0/20 | 1.55 | 24.9 | - |
-| on | on | 20/20 | 20/20 | 0.05 | 37.0 | 47.3 |
-| on | off | 20/20 | 0/20 | 0.10 | 25.7 | - |
+| on | on | 20/20 | 20/20 | 0.00 | 37.7 | 46.0 |
+| on | off | 20/20 | 0/20 | 0.20 | 25.7 | - |
 
 - Reflex off, radio on, did not assemble: seed 64 (lost 2), seed 65 (lost 2), seed 66 (lost 2), seed 68 (lost 2), seed 75 (lost 3), seed 76 (lost 2), seed 77 (lost 2), seed 78 (lost 2), seed 79 (lost 2).
 
@@ -123,9 +140,12 @@ other two sets are shown so the gap between tuned-on and untouched is visible.
 
 | slip reflex | radio | beacon located | dig team assembled | robots lost per mission | median s to locate | median s to assemble |
 |---|---|---|---|---|---|---|
-| on | on | 20/20 | 20/20 | 0.05 | 38.8 | 45.3 |
-| on | off | 18/20 | 0/20 | 0.25 | 28.1 | - |
+| off | on | 20/20 | 11/20 | 1.30 | 29.5 | 32.5 |
+| off | off | 15/20 | 0/20 | 1.50 | 27.5 | - |
+| on | on | 20/20 | 20/20 | 0.10 | 39.9 | 45.8 |
+| on | off | 20/20 | 0/20 | 0.05 | 29.4 | - |
 
+- Reflex off, radio on, did not assemble: seed 4 (lost 2), seed 6 (lost 2), seed 9 (lost 2), seed 10 (lost 2), seed 12 (lost 2), seed 13 (lost 2), seed 14 (lost 2), seed 15 (lost 2), seed 16 (lost 2).
 
 ### Fleet search, seeds 20-39 (used to debug the planner)
 
@@ -133,45 +153,56 @@ other two sets are shown so the gap between tuned-on and untouched is visible.
 
 | slip reflex | radio | beacon located | dig team assembled | robots lost per mission | median s to locate | median s to assemble |
 |---|---|---|---|---|---|---|
-| on | on | 19/20 | 19/20 | 0.15 | 36.6 | 45.6 |
-| on | off | 20/20 | 1/20 | 0.20 | 30.1 | 59.6 |
+| off | on | 20/20 | 8/20 | 1.55 | 30.5 | 32.7 |
+| off | off | 14/20 | 0/20 | 1.50 | 25.6 | - |
+| on | on | 20/20 | 20/20 | 0.05 | 36.2 | 45.8 |
+| on | off | 20/20 | 0/20 | 0.15 | 30.3 | - |
 
-- Reflex on, radio on, did not assemble: seed 30 (not located).
+- Reflex off, radio on, did not assemble: seed 20 (lost 2), seed 21 (lost 2), seed 22 (lost 2), seed 23 (lost 2), seed 25 (lost 3), seed 28 (lost 2), seed 29 (lost 2), seed 30 (lost 2), seed 31 (lost 2), seed 32 (lost 2), seed 33 (lost 2), seed 37 (lost 3).
 
 <!-- END GENERATED -->
 
 ### Reading the numbers
 
 - **With the reflex and the radio, the team did the whole job on all twenty
-  held-out seeds**, losing one robot in twenty missions.
-- **The reflex is what makes the task possible.** Without it the team loses 1.45
-  robots a mission and assembles 11 times in 20. Every one of the nine failures
-  had lost two or more robots, and three are needed to dig. Coordination does
-  not protect against ice on its own (1.45 lost with the radio, 1.55 without):
-  a team with no reflex learns about a patch by losing a robot to it.
+  fresh seeds**, losing one robot in twenty missions. Over all four sets it is
+  80 of 80, with four robots lost.
+- **One of the twenty was close, and only the second pass saved it.** On seed
+  214 the first pass missed the beacon. The team found it at 95.8 s and
+  assembled at 97.1 s of the 100 s allowed. On the commit before the second
+  pass (b58b212) the same seed ends at 79.7 s with the beacon never located.
+  That is one mission, checked after the fact. The median time to assemble is
+  37 s.
+- **The reflex is what makes the task possible.** Without it the team loses 1.10
+  robots a mission on the fresh seeds and assembles 15 times in 20 (45 of 80
+  over all sets). Every one of the 35 failures had lost two or more robots, and
+  three are needed to dig. Coordination does not protect against ice on its own
+  (1.10 lost with the radio, 1.30 without): a team with no reflex learns about a
+  patch by losing a robot to it.
 - **"Assembled 0/20 with the radio off" is true almost by construction, and
   should not be quoted as the size of the coordination effect.** Without a radio
   a robot only walks to the beacon if its own transceiver hears it. The range is
   2 m and the lanes are 3 m apart, so three robots gathering needs luck the
-  layout does not offer (it happened once in 80 missions). The row shows that
-  the task needs communication. It does not measure how good the coordination is.
+  layout does not offer (it happened in none of 160 missions). The row shows
+  that the task needs communication. It does not measure how good the
+  coordination is.
 - **"Located" is the comparison a lone robot can win**, and with the reflex on
-  it is 20/20 either way on the held-out seeds. Without the reflex the radio is
-  worth one beacon in twenty (19 vs 18): a robot fell and the line closed up
-  over its lane.
-- **Coordination costs time.** Median time to locate is 37 s with the radio
+  it is 20/20 either way on every set. Without the reflex the radio is worth
+  three beacons in twenty on the fresh seeds (20 vs 17), and 16 in 80 over all
+  sets: when a robot falls, the line closes up over its lane, and what it still
+  misses the second pass goes back for.
+- **Coordination costs time.** Median time to locate is 31 s with the radio
   against 26 s without, because the line waits for its slowest member and backs
   off ice together.
-- **The debug sets score about the same as the held-out set** (20/20 and 19/20
-  assembled), which is some evidence the final planner is not fitted to them.
-  It is not proof: three planner versions were thrown away on these seeds.
-- **Seed 30 is a hole in the sweep, and it is a class, not a one-off.** Radio
-  and reflex on, nobody lost, beacon never located. One robot fell behind after
-  two reflex stops, the other three re-split the field into lanes 4 m apart,
-  which is exactly twice the 2 m transceiver range, and the beacon sat on the
-  seam, 2.19 m from the nearest robot. The straggler walked straight up a
-  neighbour's strip. All four parked at the top and the mission ended at 72.5 s
-  with 27.5 s unused. See "Relaying, and the hole in the sweep" below.
+- **The used sets score the same as the fresh set** (20/20 assembled on each),
+  which is some evidence the code is not fitted to them. It is not proof: three
+  planner versions were thrown away on seeds 0-39.
+- **Seed 30 was a hole in the sweep, and the second pass closes it.** In the
+  earlier tables this was the one reflex-on mission that never found the
+  beacon: a robot fell behind, the other three re-split the field into lanes
+  4 m apart, twice the transceiver range, and the beacon sat on the seam. It
+  now assembles at 94.1 s, late but inside the limit. See "Relaying, and the
+  hole in the sweep" and "A second pass over what the line missed" below.
 
 ## How much radio, and how many robots
 
@@ -528,8 +559,8 @@ cell (four approaches, 32 each). Falls without the reflex / with it:
   in any 0.08 cell, raised or flush. Sweeping slower over unknown ground was
   not tried in missions.
 
-The mission tables under "Results" and the two studies above were run with the
-reflex as it was before this change.
+The mission tables under "Results" have since been rerun with this reflex. The
+radio and team-size studies above have not: they are from commit 928f08f.
 
 ## Flush ice, and how fast to sweep
 
@@ -635,8 +666,9 @@ Other things the missions exposed:
   team locates 12/12 and assembles 11/12 at 95 % packet loss, on twelve seeds. A
   3 m radio range still fails one mission in five (16/20), with relaying on.
 - **The second pass is lightly tested where it matters most.** With the reflex
-  on and a clean radio no fresh mission needed one, and with the reflex off
-  only four ran.
+  on and a clean radio, one fresh mission in twenty needed one (seed 214) and
+  it finished with 3 s to spare. With the reflex off only four ran in its own
+  study.
 - **No robot gets up.** Every loss is permanent.
 - **One field size, one ice density.** Team size was varied from three to six
   on the same field only.

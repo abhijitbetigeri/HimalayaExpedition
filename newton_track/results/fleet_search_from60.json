@@ -14,11 +14,11 @@
  "summary": {
   "coordinated": {
    "missions": 20,
-   "located": 19,
+   "located": 20,
    "assembled": 11,
    "robots_lost_mean": 1.45,
-   "coverage_mean": 0.72,
-   "t_located_median_s": 25.7,
+   "coverage_mean": 0.723,
+   "t_located_median_s": 26.4,
    "t_assembled_median_s": 28.9
   },
   "independent": {
@@ -43,7 +43,7 @@
    "t_assembled_s": 26.1,
    "robots_lost": 1,
    "coverage": 0.601,
-   "messages": 983,
+   "messages": 1013,
    "duration_s": 26.1,
    "beacon": [
     5.9,
@@ -79,7 +79,7 @@
    "t_assembled_s": 38.3,
    "robots_lost": 1,
    "coverage": 0.683,
-   "messages": 1575,
+   "messages": 1717,
    "duration_s": 38.3,
    "beacon": [
     1.5,
@@ -151,7 +151,7 @@
    "t_assembled_s": 31.6,
    "robots_lost": 1,
    "coverage": 0.579,
-   "messages": 1305,
+   "messages": 1406,
    "duration_s": 31.6,
    "beacon": [
     2.47,
@@ -187,7 +187,7 @@
    "t_assembled_s": null,
    "robots_lost": 2,
    "coverage": 0.743,
-   "messages": 1397,
+   "messages": 1661,
    "duration_s": 41.5,
    "beacon": [
     10.73,
@@ -223,7 +223,7 @@
    "t_assembled_s": null,
    "robots_lost": 2,
    "coverage": 0.938,
-   "messages": 1611,
+   "messages": 1766,
    "duration_s": 44.4,
    "beacon": [
     1.44,
@@ -259,7 +259,7 @@
    "t_assembled_s": null,
    "robots_lost": 2,
    "coverage": 0.729,
-   "messages": 1204,
+   "messages": 1408,
    "duration_s": 37.6,
    "beacon": [
     9.27,
@@ -295,7 +295,7 @@
    "t_assembled_s": 22.4,
    "robots_lost": 1,
    "coverage": 0.491,
-   "messages": 876,
+   "messages": 911,
    "duration_s": 22.4,
    "beacon": [
     5.51,
@@ -331,7 +331,7 @@
    "t_assembled_s": null,
    "robots_lost": 2,
    "coverage": 0.9,
-   "messages": 1374,
+   "messages": 1612,
    "duration_s": 44.1,
    "beacon": [
     8.96,
@@ -367,7 +367,7 @@
    "t_assembled_s": 46.1,
    "robots_lost": 1,
    "coverage": 0.979,
-   "messages": 1451,
+   "messages": 1612,
    "duration_s": 46.1,
    "beacon": [
     8.14,
@@ -403,7 +403,7 @@
    "t_assembled_s": 32.1,
    "robots_lost": 1,
    "coverage": 0.512,
-   "messages": 1516,
+   "messages": 1633,
    "duration_s": 32.1,
    "beacon": [
     10.4,
@@ -439,7 +439,7 @@
    "t_assembled_s": 26.9,
    "robots_lost": 1,
    "coverage": 0.632,
-   "messages": 916,
+   "messages": 968,
    "duration_s": 26.9,
    "beacon": [
     7.25,
@@ -475,7 +475,7 @@
    "t_assembled_s": 42.9,
    "robots_lost": 1,
    "coverage": 0.946,
-   "messages": 1616,
+   "messages": 1695,
    "duration_s": 42.9,
    "beacon": [
     3.86,
@@ -511,7 +511,7 @@
    "t_assembled_s": 27.3,
    "robots_lost": 1,
    "coverage": 0.552,
-   "messages": 1177,
+   "messages": 1216,
    "duration_s": 27.3,
    "beacon": [
     1.9,
@@ -547,7 +547,7 @@
    "t_assembled_s": 28.9,
    "robots_lost": 1,
    "coverage": 0.557,
-   "messages": 1273,
+   "messages": 1342,
    "duration_s": 28.9,
    "beacon": [
     7.3,
@@ -583,7 +583,7 @@
    "t_assembled_s": null,
    "robots_lost": 3,
    "coverage": 0.69,
-   "messages": 846,
+   "messages": 1065,
    "duration_s": 32.2,
    "beacon": [
     4.3,
@@ -619,7 +619,7 @@
    "t_assembled_s": null,
    "robots_lost": 2,
    "coverage": 0.976,
-   "messages": 1682,
+   "messages": 2000,
    "duration_s": 53.7,
    "beacon": [
     1.78,
@@ -655,7 +655,7 @@
    "t_assembled_s": null,
    "robots_lost": 2,
    "coverage": 0.699,
-   "messages": 1134,
+   "messages": 1330,
    "duration_s": 34.8,
    "beacon": [
     7.17,
@@ -691,7 +691,7 @@
    "t_assembled_s": null,
    "robots_lost": 2,
    "coverage": 0.664,
-   "messages": 1089,
+   "messages": 1286,
    "duration_s": 33.2,
    "beacon": [
     4.9,
@@ -720,15 +720,15 @@
    "seed": 79,
    "mode": "coordinated",
    "reflex": false,
-   "located": false,
-   "t_located_s": null,
-   "locate_error_m": null,
+   "located": true,
+   "t_located_s": 51.3,
+   "locate_error_m": 0.08,
    "assembled": false,
    "t_assembled_s": null,
    "robots_lost": 2,
-   "coverage": 0.881,
-   "messages": 587,
-   "duration_s": 39.7,
+   "coverage": 0.933,
+   "messages": 1694,
+   "duration_s": 57.3,
    "beacon": [
     5.27,
     12.86
