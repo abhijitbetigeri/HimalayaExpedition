@@ -364,8 +364,81 @@ ground no robot came within 2 m of, and that the team then parks.
   on which it was designed, and changes no outcome on twenty fresh seeds
   (120-139: located 19/20 and assembled 19/20 before and after). Mean unsearched
   ground went from 1.19 % to 1.03 % while layouts with a hole went from 5 to 7.
-- **Not fixed.** Nothing happens after the first pass. A second pass over the
-  missed ground with the unused time is the open piece of work.
+- **Fixed by a second pass**, next section.
+
+## A second pass over what the line missed
+
+When the team reaches the far end without a beacon it now goes back for the
+ground it missed, instead of parking. Built on a frozen copy of 7b7a444 and
+scored on seeds nobody had used. Rows are in `results/fleet_pass2.json`.
+
+What each robot does, from its own track and what it has heard:
+
+- **A map.** A 0.25 m grid of ground it believes searched: squares wholly
+  within range of a place it stood, or a place a standing teammate reported.
+  The radius used is 1.82 m, not 2.0, so a 4 m seam does not count as searched.
+- **When it starts.** Parked at the far end with no signal, it waits until
+  every robot it knows of has been parked there together for 3 s. Heartbeats
+  carry "parked since", so each robot can certify that for itself.
+- **Where it goes.** It claims the point with the most unsearched ground in
+  reach per metre walked, nearest first, and the claim rides on the heartbeat.
+  Two claims on the same ground: the robot nearer its own claim keeps it, lower
+  id on a tie.
+- **Nothing left to claim.** It stands between the claims teammates still
+  hold, so a late find has helpers close. When nobody holds a claim everyone
+  holds, and the mission ends by the old rule.
+- **Mapped ice** is not searched from on top: ground beside a hazard disc is
+  searched from at least 1.2 m outside it.
+- **Maps are shared** once a second by robots at the far end or on a second
+  pass, 336 bytes, merged by OR.
+
+One line of scoring changed: a robot parked at the far end that has not yet
+ruled out going back does not count as parked for good. On a clean radio a
+second pass cannot start before the old code would have ended the mission.
+
+Four robots, coordinated, seeds 140-159, n = 20 per cell, paired:
+
+| Cell | | Located | Assembled | Robots lost in 20 | Mean duration s | Used a second pass | Missions identical |
+|---|---|---|---|---|---|---|---|
+| clean radio, reflex on | before | 20/20 | 20/20 | 1 | 39.8 | | |
+| | after | 20/20 | 20/20 | 1 | 39.8 | 0 | 20/20 |
+| clean radio, reflex off | before | 17/20 | 13/20 | 24 | 34.2 | | |
+| | after | 20/20 | 13/20 | 24 | 38.6 | 3 | 17/20 |
+| 3 m radio, reflex on | before | 20/20 | 19/20 | 4 | 42.2 | | |
+| | after | 20/20 | 20/20 | 4 | 42.0 | 2 | 18/20 |
+
+With the beacon moved out of reach, reflex on, same seeds: unsearched ground
+0.21 % to 0.00 % on average and 3.82 % to 0.04 % at worst; 19 of 20 teams made
+a second pass, the reflex fired 5 times during them and no robot was lost in
+one. Those missions run 67.4 s to 77.3 s.
+
+- **Every beacon the first pass missed is found.** The three gains with the
+  reflex off (seeds 143, 151, 158) are the thin-line case: two robots down,
+  survivors on lanes 3 and 9, beacon between them. None can assemble a team of
+  three with two down.
+- **A 3 m radio gains from it too**, because parking at the far end out of
+  earshot is the same gap: 19/20 to 20/20 here.
+- **Nothing that located on the first pass changed.** On the clean radio every
+  such mission is identical before and after, here and on seeds 60-79 (reflex
+  on, 20 of 20 identical; reflex off, 19 identical and seed 79 newly located).
+- **Seeds 100-119 were scored first and are burned.** Tracing the one robot
+  lost in a second pass there (seed 106) showed a fault in the rule: a robot
+  told to hold where its reflex had fired walked back onto the ice. That was
+  fixed, so the table above is the reserve set. For the record, the code
+  before the fix on 100-119: clean radio 20/20 and 20/20 unchanged with the
+  reflex on, 20/20 and 16/20 unchanged with it off, and the 3 m radio assembled
+  15/20 to 20/20.
+- **With the reflex and a clean radio there is no fresh-seed evidence.** No
+  such mission failed in either fresh set, so nothing was there to gain; the
+  case rests on seed 30 (now located at 92.2 s and assembled at 93.8 s, one
+  seed, an illustration) and on the unsearched-ground measure.
+- **Time is tight.** A hole far from the top found after a long first pass
+  will often be located but not assembled inside 100 s.
+- **A robot that never reaches the far end still blocks the second pass for
+  everyone**, 3 of 60 layouts. A bounded wait would fix it and was left out to
+  keep first-pass missions identical.
+- **Not run**: packet loss, team sizes other than four, and the radio study's
+  candidate agents on top of this.
 
 ## The reflex, looked at harder
 
@@ -561,8 +634,9 @@ Other things the missions exposed:
 - **The radio is perfect** in the main tables. With the roster-memory fix the
   team locates 12/12 and assembles 11/12 at 95 % packet loss, on twelve seeds. A
   3 m radio range still fails one mission in five (16/20), with relaying on.
-- **The sweep is not complete.** About one layout in four leaves some ground
-  no robot came within 2 m of, and the team does not go back for it.
+- **The second pass is lightly tested where it matters most.** With the reflex
+  on and a clean radio no fresh mission needed one, and with the reflex off
+  only four ran.
 - **No robot gets up.** Every loss is permanent.
 - **One field size, one ice density.** Team size was varied from three to six
   on the same field only.

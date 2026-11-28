@@ -70,6 +70,7 @@ ROLE_COLORS = {
     "locate": (1.00, 0.82, 0.00),  # yellow
     "converge": (0.92, 0.12, 0.78),  # magenta
     "hold": (0.12, 0.25, 0.95),  # blue
+    "search": (0.95, 0.55, 0.75),  # pink: second pass over ground the line missed
     "backoff": (0.00, 0.80, 0.82),  # cyan
     "down": (0.06, 0.06, 0.07),  # black
 }

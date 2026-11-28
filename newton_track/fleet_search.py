@@ -17,7 +17,9 @@ the same deterministic rule to the same shared roster. What they share goes
 over `Bus`, a broadcast channel with a fixed message vocabulary:
 
   POSE     heartbeat, 5 Hz: who I am, where I am, what I am doing, and what I
-           know of the team and the mission, so news crosses more than one hop
+           know of the team and the mission, so news crosses more than one hop.
+           For the second pass it also says since when I have been parked,
+           whether I am on my second pass, and the point I am searching
   DOWN     I fell, here
   HAZARD   there is ice here (from a fall, or from the slip reflex if enabled)
   SIGNAL   my transceiver reads the beacon: estimated position and range
@@ -29,7 +31,10 @@ Coordination, concretely:
   - the line stays abreast: whoever is ahead of the pack slows down;
   - a hazard one robot pays for is routed around by all of them;
   - on a signal, the robot with the shortest range pinpoints, the others take
-    dig positions around it without crossing paths.
+    dig positions around it without crossing paths;
+  - when the whole team stands at the far end with no signal, each robot goes
+    back for the ground its own map says nobody has been in range of (the
+    second pass, `RobotAgent._second_pass`).
 
 Scoring. "Located": a robot declared the burial point within 1 m of the truth.
 "Assembled": three robots standing, holding, within 1.7 m of the true beacon for
@@ -78,6 +83,31 @@ LOST_AFTER = int(1.5 * POLICY_HZ)  # a heartbeat older than this is too stale to
 # (results/fleet_comms.json). Ten seconds takes that from 8/12 to 12/12.
 ROSTER_AFTER = 10 * POLICY_HZ
 T_MAX = 100 * POLICY_HZ  # mission time limit, ticks
+
+# -- second pass: bookkeeping constants, none of them a property of the task --
+CELL = 0.25  # the coverage map is the field in squares this size
+# A square counts as searched once all of it has been in range of a standing
+# robot: half its diagonal inside SENSE_RANGE. Three lanes on 12 m are 4 m
+# apart, which is exactly twice SENSE_RANGE, so with this margin the seam
+# between two such lanes is NOT taken as searched. That is the point: on seed
+# 30 the beacon sat on such a seam, 2.19 m from the nearest robot.
+COVER_RANGE = SENSE_RANGE - 0.18
+REACH = COVER_RANGE - 0.35  # what a robot counts on covering from a point it walks to: it stops within 0.3 m of it
+VANTAGE_STEP = 0.5  # the points a robot may choose to walk to are a lattice this fine
+# ...none of them within this of a hazard disc. From 1.2 m outside it a robot's
+# REACH still takes in everything up to the disc's edge, and it stands 0.75 m
+# clear of route()'s keep-out zone. At that zone's edge (0.6) the second pass
+# met the same patch again from a new side: 6 of 14 slip-reflex events on seeds
+# 20-39 were beside ice the robot already had on its map.
+VANTAGE_KEEP_OUT = 1.2
+COV_EVERY = 5  # the map rides on every fifth heartbeat
+TAKE_OVER = 1.0  # a robot this much nearer to a teammate's claim than the teammate is may claim that ground itself
+LOCAL = 3.0  # a robot finishes what is within this distance before it looks further afield
+MIN_GAIN = 4  # squares (0.25 m2) of unsearched ground that make a point worth walking to
+SETTLED = 3 * POLICY_HZ  # the team must have stood at the far end this long before anyone goes back
+HOVER = 0.05  # a sweeper this close to the line where it parks is as good as parked
+PART = (0.7, 1.0)  # closer than the first to a teammate, walk straight apart until the second
+CLOSE_UP = 2.0  # a robot with nothing to search waits among the searchers, no nearer than this to where any of them is heading
 
 
 def wrap(a: float) -> float:
@@ -319,6 +349,34 @@ def route(pos, target, hazards, clearance: float = 0.45, memory: dict | None = N
     return wp
 
 
+class _SearchGrid:
+    """Geometry of the coverage map. The same for every robot, built once."""
+
+    _built = None
+
+    def __init__(self):
+        x0, x1, y0, y1 = FIELD
+        gx, gy = np.meshgrid(np.arange(x0 + CELL / 2, x1, CELL), np.arange(y0 + CELL / 2, y1, CELL))
+        self.cx, self.cy = gx.ravel(), gy.ravel()  # square centres
+        vx, vy = np.meshgrid(np.arange(x0 + VANTAGE_STEP / 2, x1, VANTAGE_STEP), np.arange(y0 + VANTAGE_STEP / 2, y1, VANTAGE_STEP))
+        self.vx, self.vy = vx.ravel(), vy.ravel()  # points a robot may walk to
+        d2 = (self.vx[:, None] - self.cx[None]) ** 2 + (self.vy[:, None] - self.cy[None]) ** 2
+        self.reach = (d2 <= REACH**2).astype(np.float32)  # (points, squares): what standing at a point is counted on to cover
+
+    @classmethod
+    def get(cls) -> "_SearchGrid":
+        if cls._built is None:
+            cls._built = cls()
+        return cls._built
+
+    def near_leg(self, a, b, r: float) -> np.ndarray:
+        """Squares within r of the straight leg a-b."""
+        ax, ay = a
+        dx, dy = b[0] - ax, b[1] - ay
+        u = np.clip(((self.cx - ax) * dx + (self.cy - ay) * dy) / max(dx * dx + dy * dy, 1e-12), 0.0, 1.0)
+        return (self.cx - ax - u * dx) ** 2 + (self.cy - ay - u * dy) ** 2 <= r * r
+
+
 N_SLOTS = 12  # dig positions around the burial point; neighbours of a taken slot stay empty
 STRAGGLER_GAP = 3.0  # a sweeper this far behind the front is not holding a lane
 
@@ -343,6 +401,12 @@ class RobotAgent:
                Shorter range wins, as for SIGNAL, so an old one cannot displace
                a better one.
       found    the burial point and who pinpointed it.
+      cov      the sender's map of searched ground (see "Second pass"), one bit
+               a square, 336 bytes, once a second and only from a robot that
+               is parked at the far end or on its second pass. Maps are merged
+               by OR, so they can only grow. Without it a robot that was out of
+               earshot of a teammate's lane takes that lane for unsearched and
+               walks the width of the field to search it again.
 
     A fallen robot keeps a heartbeat going with role "down" and the place it
     fell: its one DOWN reaches nobody if nobody is in range at that moment.
@@ -350,6 +414,57 @@ class RobotAgent:
     Everything relayed is something a robot in range would already have heard
     first-hand, so on a radio that reaches everyone the merge changes nothing.
     `relay = False` is the agent as it was before.
+
+    Second pass. The sweep leaves holes: when a robot drops out of the line the
+    rest re-split the field into fewer, wider lanes, and three lanes on 12 m
+    touch with no overlap (two do not touch at all). The team used to park at
+    the far end with the beacon in such a hole and most of the clock unused.
+    Now each robot keeps a map of the ground it believes has been searched
+    (`cov`): every square that has been wholly within range of a position it
+    stood at itself or heard a standing teammate report. When it stands at the
+    far end with no signal, and every teammate it knows of has stood there too
+    for SETTLED (`_first_pass_over`), it goes back:
+
+      - if a teammate stands within PART of it, it first walks straight
+        away from that teammate, forward or back, without turning
+        (`_step_apart`);
+      - it picks the point with the most unsearched ground in reach per metre
+        of walking, looking within LOCAL of itself first (`_choose_claim`),
+        never a point within VANTAGE_KEEP_OUT of a hazard disc, and walks
+        there by the usual planner. The heartbeat carries the point as its
+        `claim`;
+      - ground within range of the straight leg from a teammate to that
+        teammate's claim is spoken for and counts for nothing, unless this
+        robot is TAKE_OVER nearer to that claim than the teammate is. If two
+        claims want the same ground, the robot nearer to its own claim keeps
+        it (lower id on a tie) and the other chooses again: the same rule on
+        the same roster, as for dig slots. Ranked by id alone, the two
+        left-hand robots walked across the field to ground the two right-hand
+        robots were standing next to (seed 30);
+      - a claim is kept until its ground is covered, so the choice does not
+        flip between ticks. One that cannot be reached in twice its walking
+        time plus ten seconds is given up and its ground written off;
+      - with no point left that is worth walking to, the robot looks again
+        five times a second, and meanwhile closes up (`_close_up`): it walks
+        to the middle of the claims its teammates still hold, no nearer than
+        CLOSE_UP to any of them, and waits there, so that a beacon found late
+        in the clock has a dig team nearby. When nobody holds a claim it
+        holds where it stands (or, if that is inside the keep-out zone of
+        mapped ice, at the nearest point outside), and when every standing
+        robot does that the mission ends as it always did.
+
+    Mapped ice. A hazard disc is not searched: nobody can stand on it to dig,
+    and the robot that reported it was standing within a metre of its centre,
+    so all but its far edge was in range then. Ground beside a disc is searched
+    from the side, from a point at least VANTAGE_KEEP_OUT outside it. What a
+    robot still believes unsearched when it stops (`unsearched_m2`) is those
+    discs, plus anything it wrote off.
+
+    The second pass starts only after the old code would have ended the
+    mission (everyone parked for three seconds), so a mission that hears the
+    beacon on the first pass runs exactly as it did. `Mission._score` needed
+    one change for a second pass to exist: a robot at the far end that has not
+    yet ruled out going back (`pending`) does not count as parked.
     """
 
     relay = True
@@ -371,6 +486,22 @@ class RobotAgent:
         self.yield_ticks = 0
         self.said = math.inf  # the shortest beacon range I have ever broadcast as my own
         self.fell_at = None  # where I went down
+        # second pass
+        self.cov = np.zeros(_SearchGrid.get().cx.shape, dtype=bool) if coordinated else None  # squares I believe searched
+        self.pass2 = False  # the first pass is over and I am searching what it missed
+        self.pending = False  # parked at the far end but not finished: read by Mission._score
+        self.claim = None  # the point I am walking to in the second pass
+        self.claim_k = None  # ...its index on the lattice
+        self.claim_until = 0  # ...and the tick by which I should have covered it
+        self.written_off = None  # squares I gave up on reaching
+        self.rest = None  # where I wait when nothing is left that is worth walking to
+        self.resting = False  # ...and whether I have got there
+        self.rest_k = None  # ...its index on the lattice, when it is a lattice point
+        self.parting = 0  # ticks spent walking straight away from a teammate that is too close
+        self.following = False  # that point was chosen to be near teammates who are still searching
+        self.parked_since = None  # first tick of my current unbroken spell parked ("hold", "down", or hovering on the line)
+        self.lost_seen = {}  # id -> tick I learned it was down
+        self.unsearched_m2 = None  # by my map, at my last look
 
     # ---- shared rules: every agent computes these from the same roster ----
 
@@ -451,13 +582,26 @@ class RobotAgent:
         """Returns (command, outbox)."""
         out = []
         me = pose
+        # `role` is still what Mission._score saw at the end of the last tick.
+        # Hovering counts as parked: a robot that stops exactly on the parking
+        # line drifts back over it and steps forward again, several times a
+        # second, for as long as the mission lasts (seed 91 on a 3 m radio).
+        hovering = self.role == "sweep" and me[1] >= FIELD[3] - 0.3 - HOVER
+        if self.role not in ("hold", "down") and not hovering:
+            self.parked_since = None
+        elif self.parked_since is None:
+            self.parked_since = t - 1
+        self.pending = False
         news = []
         for m in inbox:
             src = m["from"]
             if m["type"] == "POSE":
-                self.roster[src] = {"x": m["x"], "y": m["y"], "role": m["role"], "slot": m.get("slot"), "t": t}
+                self.roster[src] = {"x": m["x"], "y": m["y"], "role": m["role"], "slot": m.get("slot"), "t": t,
+                                    "since": m.get("since"), "p2": m.get("p2", False), "claim": m.get("claim")}  # fmt: skip
                 if m["role"] == "down":
                     self.lost.add(src)
+                elif self.cov is not None:
+                    self._mark(m["x"], m["y"])
                 news.append(m)
             elif m["type"] == "DOWN":
                 self.lost.add(src)
@@ -472,6 +616,8 @@ class RobotAgent:
         if self.relay:
             for m in news:  # after everything first-hand: second-hand news never overrides what I heard myself this tick
                 self._merge_news(t, m)
+        for r in self.lost:
+            self.lost_seen.setdefault(r, t)
 
         beat = t % HEARTBEAT == self.id % HEARTBEAT
         if down:
@@ -503,8 +649,13 @@ class RobotAgent:
                 self.said = min(self.said, rng_meas)
                 out.append({"type": "SIGNAL", "x": est[0], "y": est[1], "range": rng_meas})
 
+        if self.best_signal is not None:
+            self.claim = None  # the beacon outranks the search
         if beat:
-            pose_msg = {"type": "POSE", "x": me[0], "y": me[1], "role": self.role, "slot": self.slot}
+            if self.cov is not None:
+                self._mark(me[0], me[1])  # exactly the positions my teammates hear, so on a clean radio all maps agree
+            pose_msg = {"type": "POSE", "x": me[0], "y": me[1], "role": self.role, "slot": self.slot,
+                        "since": self.parked_since, "p2": self.pass2, "claim": self.claim}  # fmt: skip
             if self.relay:
                 pose_msg.update(self._news(t))
             out.append(pose_msg)
@@ -541,10 +692,17 @@ class RobotAgent:
             self.role = "converge"
             return self._yield_to_others(t, me, self._go(me, slot, V_SWEEP, 0.3, self._teammate_discs(t))), out
 
+        # -- second pass: the team reached the far end without a signal --
+        if self.pass2:
+            return self._second_pass(t, me, beat), out
+
         # -- sweep --
         if me[1] >= y1 - 0.3:
             self.role = "hold"
             self.target = None
+            if self.coordinated:
+                self.pending = True  # not finished: the mission must not end on my account
+                self.pass2 = self._first_pass_over(t)
             return (0.0, 0.0, 0.0), out
         self.role = "sweep"
         lane_x = self._lane_x(t, me)
@@ -567,7 +725,8 @@ class RobotAgent:
         dates the entry to the tick it would have heard it first-hand.
         """
         news = {
-            "team": [(r, i["x"], i["y"], i["role"], i.get("slot"), t - i["t"] + 1) for r, i in self._heard(t).items()],
+            "team": [(r, i["x"], i["y"], i["role"], i.get("slot"), t - i["t"] + 1, i.get("since"), i.get("p2", False), i.get("claim"))
+                     for r, i in self._heard(t).items()],  # fmt: skip
             "lost": sorted(self.lost),
             "hazards": [(hx, hy) for hx, hy, _ in self.hazards],
         }
@@ -576,18 +735,25 @@ class RobotAgent:
         elif self.best_signal is not None:
             rng_meas, est, who = self.best_signal
             news["sig"] = (rng_meas, est[0], est[1], who)
+        elif self.cov is not None and (self.pass2 or self.parked_since is not None) and t % (COV_EVERY * HEARTBEAT) == self.id % HEARTBEAT:
+            news["cov"] = np.packbits(self.cov).tobytes().hex()
         return news
 
     def _merge_news(self, t: int, m: dict):
-        for r, x, y, role, slot, age in m.get("team", ()):
+        for r, x, y, role, slot, age, *more in m.get("team", ()):
             seen = t - age  # the tick I would have heard this myself, had I been in range
             if r == self.id or t - seen > ROSTER_AFTER:
                 continue
             if r not in self.roster or self.roster[r]["t"] < seen:  # strictly newer only: an echo of what I have changes nothing
-                self.roster[r] = {"x": x, "y": y, "role": role, "slot": slot, "t": seen}
+                since, p2, claim = more if len(more) == 3 else (None, False, None)
+                self.roster[r] = {"x": x, "y": y, "role": role, "slot": slot, "t": seen, "since": since, "p2": p2, "claim": claim}
+                if role != "down" and self.cov is not None:
+                    self._mark(x, y)
         self.lost.update(r for r in m.get("lost", ()) if r != self.id)
         for hx, hy in m.get("hazards", ()):
             self._add_hazard(hx, hy)
+        if "cov" in m and self.cov is not None:
+            self.cov |= np.unpackbits(np.frombuffer(bytes.fromhex(m["cov"]), dtype=np.uint8))[: self.cov.size].astype(bool)
         if self.found is not None:
             return  # pinpointed: nothing second-hand improves on that
         found = m.get("found")
@@ -606,6 +772,227 @@ class RobotAgent:
             bar = math.inf if mine is None else min(mine[0], self.said) if mine[2] == self.id else mine[0]
             if sig[0] < bar - 0.05:
                 self.best_signal = (sig[0], (sig[1], sig[2]), sig[3])
+
+    # ---- second pass: the ground the sweep missed ----
+
+    def _mark(self, x: float, y: float):
+        """A standing robot was here: every square wholly within its range is searched."""
+        g = _SearchGrid.get()
+        self.cov |= (g.cx - x) ** 2 + (g.cy - y) ** 2 <= COVER_RANGE**2
+
+    def _first_pass_over(self, t: int) -> bool:
+        """Has every robot I know of stood parked, all at once, for SETTLED?
+
+        Called while I am parked at the far end with no signal. Each heartbeat
+        says since when its sender has been parked without a break
+        (`parked_since`), and a heartbeat stamped `s` vouches for its sender up
+        to tick s - 2: one tick for the radio, one because a heartbeat is
+        written before its sender decides. So "all of us were parked on every
+        tick from a to b" is something I can know, a little late. I ask for
+        b - a >= SETTLED, which is exactly the rule that used to END the
+        mission. On a radio that reaches everyone a second pass therefore
+        starts only where there used to be no mission left, and anything that
+        happened before, first signal included, is untouched.
+
+        One exception, and it is deliberate. A robot hovering on the parking
+        line (see `step`) was never parked for three seconds running, so the
+        old mission did not end: the team stood at the far end until the clock
+        ran out. Here it counts as parked and the second pass starts.
+
+        On a radio with a range a teammate can be out of earshot. One that has
+        been silent for ROSTER_AFTER, or was never heard, is treated as gone,
+        as the sweep already treats it. One that is already on its second pass
+        has been through this test itself.
+        """
+        if self.parked_since is None:
+            return False
+        since, until = self.parked_since, t - 1
+        for r in range(self.n):
+            if r == self.id:
+                continue
+            if r in self.lost:  # down for good, from the tick before I heard of it at the latest
+                since = max(since, self.lost_seen.get(r, t) - 1)
+                continue
+            i = self.roster.get(r)
+            if i is None or t - i["t"] > ROSTER_AFTER:
+                if t <= ROSTER_AFTER:
+                    return False  # too early to call a robot I never heard gone
+                continue
+            if i.get("p2"):
+                continue
+            if i.get("since") is None:
+                return False  # still on its first pass (or busy with something I have not heard about)
+            since, until = max(since, i["since"]), min(until, i["t"] - 2)
+        return until - since >= SETTLED
+
+    def _second_pass(self, t: int, me, beat: bool):
+        pos = (me[0], me[1])
+        apart = self._step_apart(t, me)
+        if apart is not None:
+            self.role = "search"
+            self.target = None
+            return apart
+        if beat or (self.claim is None and self.rest is None):
+            self._choose_claim(t, pos)
+            if self.claim is None:
+                self._close_up(t, pos)
+        if self.claim is None:
+            # Nothing I can usefully walk to. Wait at `rest`; I look again on every heartbeat.
+            # Its own hysteresis flag: `holding` belongs to the dig, and a stale True
+            # there would let a helper stop 0.9 m short of its dig position.
+            self.resting = math.hypot(pos[0] - self.rest[0], pos[1] - self.rest[1]) < (0.9 if self.resting else 0.35)
+            if self.resting:
+                self.role = "hold"
+                self.target = None
+                return self._keep_station(me, self.rest)
+            self.role = "search"
+            return self._yield_to_others(t, me, self._go(me, self.rest, V_SWEEP, 0.3, self._walk_round(t, pos)))
+        self.rest = self.rest_k = None
+        self.resting = self.following = False
+        self.role = "search"
+        return self._yield_to_others(t, me, self._go(me, self.claim, V_SWEEP, 0.3, self._walk_round(t, pos)))
+
+    def _step_apart(self, t: int, me):
+        """Too close to a teammate to turn round: walk straight apart first. A command, or None.
+
+        The sweep can park two robots half a metre apart (lanes are re-split as
+        robots arrive at the far end). Nothing moved after that until now. On
+        seed 32 the robots at x 7.5 and 8.1 both turned on the spot to start
+        their second pass, locked shoulders, and one went down on plain snow.
+        So inside PART[0] of a teammate a robot neither turns nor steers: it
+        walks straight forward or straight back, whichever takes it away, at
+        the pace and with the ramp the slip reflex backs out with, until they
+        are PART[1] apart.
+        """
+        near = None
+        for r, i in self._heard(t).items():
+            if t - i["t"] <= LOST_AFTER:
+                d = math.hypot(i["x"] - me[0], i["y"] - me[1])
+                if near is None or d < near[0]:
+                    near = (d, r, i)
+        if near is None or near[0] > (PART[1] if self.parting else PART[0]):
+            self.parting = 0
+            return None
+        self.parting += 1
+        d, r, i = near
+        ahead = math.cos(math.atan2(me[1] - i["y"], me[0] - i["x"]) - me[2])  # how far "straight ahead" points away from it
+        if abs(ahead) < 0.2:  # side by side: the lower id goes forward, the other back
+            ahead = 1.0 if self.id < r else -1.0
+        v = 0.25 * min(1.0, self.parting / 25)
+        return (v if ahead > 0 else -v, 0.0, 0.0)
+
+    def _walk_round(self, t: int, pos) -> list:
+        """Teammates to route round on the second pass: the parked ones, and
+        anyone within 1.5 m whatever it is doing, with more room than a parked
+        one gets."""
+        discs = self._teammate_discs(t)
+        for i in self._heard(t).values():
+            if i["role"] not in ("hold", "locate", "down") and t - i["t"] <= LOST_AFTER and math.hypot(i["x"] - pos[0], i["y"] - pos[1]) < 1.5:
+                discs.append((i["x"], i["y"], 0.6))
+        return discs
+
+    def _off_ice(self, p, margin: float) -> bool:
+        """Is p at least `margin` outside every hazard disc?"""
+        return all(math.hypot(p[0] - hx, p[1] - hy) >= hr + margin for hx, hy, hr in self.hazards)
+
+    def _close_up(self, t: int, pos):
+        """Choose where to wait while I have nothing to search: in among the teammates that have.
+
+        The spot nearest the middle of the claims I have heard, at least
+        CLOSE_UP from each of them (a searcher is about to walk there) and
+        outside every keep-out zone. With one claim that is beside it, on my
+        side; with two it is between them, so that whichever of them finds the
+        beacon has a helper a few metres away.
+        """
+        g = _SearchGrid.get()
+        claims = [i["claim"] for i in self._heard(t).values() if i.get("claim") is not None]
+        if not claims:
+            # Nobody is searching: stop here. But not on the edge of ice. A robot
+            # whose reflex has just fired stands where it met the ice; told to
+            # hold THAT spot, it backed out, walked back to it and went down
+            # (seed 106, beacon out of reach). Inside a keep-out zone the place
+            # to wait is the nearest lattice point outside all of them.
+            if self.following or self.rest is None or not self._off_ice(self.rest, 0.45):
+                self.rest, self.rest_k, self.following = pos, None, False
+                if not self._off_ice(pos, 0.45):
+                    ok = np.ones(g.vx.shape, dtype=bool)
+                    for hx, hy, hr in self.hazards:
+                        ok &= (g.vx - hx) ** 2 + (g.vy - hy) ** 2 >= (hr + 0.45 + 0.15) ** 2
+                    if ok.any():
+                        k = int(np.argmin(np.where(ok, np.hypot(g.vx - pos[0], g.vy - pos[1]), np.inf)))
+                        self.rest, self.rest_k = (float(g.vx[k]), float(g.vy[k])), k
+            return
+        self.following = True
+        ok = np.ones(g.vx.shape, dtype=bool)
+        for c in claims:
+            ok &= (g.vx - c[0]) ** 2 + (g.vy - c[1]) ** 2 >= CLOSE_UP**2
+        for hx, hy, hr in self.hazards:
+            ok &= (g.vx - hx) ** 2 + (g.vy - hy) ** 2 >= (hr + VANTAGE_KEEP_OUT) ** 2
+        for ox, oy, _r in self._teammate_discs(t):
+            ok &= (g.vx - ox) ** 2 + (g.vy - oy) ** 2 >= 1.0
+        for r, i in self._heard(t).items():  # nor where a teammate with a lower id is, or is about to be
+            if r < self.id and t - i["t"] <= LOST_AFTER:
+                ok &= (g.vx - i["x"]) ** 2 + (g.vy - i["y"]) ** 2 >= 1.2**2
+        if not ok.any():
+            if self.rest is None:
+                self.rest, self.rest_k = pos, None
+            return
+        mx, my = float(np.mean([c[0] for c in claims])), float(np.mean([c[1] for c in claims]))
+        cost = np.hypot(g.vx - mx, g.vy - my) + 0.25 * np.hypot(g.vx - pos[0], g.vy - pos[1])
+        k = int(np.argmin(np.where(ok, cost, np.inf)))
+        if self.rest_k is not None and ok[self.rest_k] and math.hypot(g.vx[k] - self.rest[0], g.vy[k] - self.rest[1]) <= 1.0:
+            return  # where I am already heading is as good: do not chase every half metre
+        self.rest, self.rest_k = (float(g.vx[k]), float(g.vy[k])), k
+
+    def _choose_claim(self, t: int, pos):
+        """Keep my claim while it is still worth having, otherwise pick the best point left."""
+        g = _SearchGrid.get()
+        if self.written_off is None:
+            self.written_off = np.zeros(g.cx.shape, dtype=bool)
+        todo = ~self.cov & ~self.written_off
+        self.unsearched_m2 = round(float((~self.cov).sum()) * CELL * CELL, 2)
+        for hx, hy, hr in self.hazards:  # mapped ice is not searched: nobody could stand there to dig
+            todo &= (g.cx - hx) ** 2 + (g.cy - hy) ** 2 > hr * hr
+        dist = np.hypot(g.vx - pos[0], g.vy - pos[1])
+        k = self.claim_k
+        mine = (dist[k], self.id) if self.claim is not None else None
+        spoken, outranks = np.zeros(g.cx.shape, dtype=bool), np.zeros(g.cx.shape, dtype=bool)
+        for r, i in self._heard(t).items():
+            c = i.get("claim")
+            if c is None:
+                continue
+            leg = g.near_leg((i["x"], i["y"]), c, COVER_RANGE)
+            theirs = math.hypot(c[0] - i["x"], c[1] - i["y"])
+            if math.hypot(c[0] - pos[0], c[1] - pos[1]) > theirs - TAKE_OVER:
+                spoken |= leg  # unless I am clearly the nearer of us to it
+            if mine is not None and (theirs, r) < mine:
+                outranks |= leg
+        ok = np.ones(g.vx.shape, dtype=bool)
+        for hx, hy, hr in self.hazards:
+            ok &= (g.vx - hx) ** 2 + (g.vy - hy) ** 2 >= (hr + VANTAGE_KEEP_OUT) ** 2
+        for ox, oy, _r in self._teammate_discs(t):  # nor on top of a parked or fallen teammate
+            ok &= (g.vx - ox) ** 2 + (g.vy - oy) ** 2 >= 1.0
+        if self.claim is not None:
+            if t >= self.claim_until:
+                self.written_off |= g.reach[k] > 0  # could not get there: do not keep trying
+                todo &= ~self.written_off
+            elif ok[k] and dist[k] > 0.4 and float(g.reach[k] @ (todo & ~outranks)) >= MIN_GAIN:
+                return
+        gain = g.reach @ (todo & ~spoken).astype(np.float32)
+        gain[~ok | (gain < MIN_GAIN)] = 0.0
+        # Nearby ground first. Ranked on gain per metre alone, a robot left a
+        # corner of a strip behind for a bigger patch across the field and
+        # walked back for it later.
+        local = gain * (dist <= LOCAL)
+        if local.any():
+            gain = local
+        best = int(np.argmax(gain / (1.0 + dist)))
+        if gain[best] <= 0.0:
+            self.claim = self.claim_k = None
+            return
+        if best != k or self.claim is None or t >= self.claim_until:
+            self.claim_until = t + int(POLICY_HZ * (10.0 + 2.0 * dist[best] / V_SWEEP))
+        self.claim, self.claim_k = (float(g.vx[best]), float(g.vy[best])), best
 
     def _go(self, me, goal, v_max: float, stop_within: float, teammates=()):
         """Command toward `goal` round whatever is mapped in between.
@@ -742,7 +1129,11 @@ class Mission:
         self._team_ticks = self._team_ticks + 1 if self.t_found is not None and len(team) >= TEAM_SIZE else 0
         if self.t_assembled is None and self._team_ticks >= POLICY_HZ:  # held for a full second
             self.t_assembled = self.t
-        all_parked = all(a.role in ("hold", "down") for a in self.agents)
+        # A robot parked at the far end that has not yet ruled out a second pass
+        # (`pending`) is not parked for good. Without this the mission ends
+        # three seconds after the last robot reaches the far end, and the test
+        # for starting a second pass needs those three seconds.
+        all_parked = all(a.role in ("hold", "down") and not a.pending for a in self.agents)
         self._parked_ticks = self._parked_ticks + 1 if all_parked else 0
         if self.t_assembled is not None or self.t >= T_MAX or standing == 0 or self._parked_ticks > 3 * POLICY_HZ:
             self.done = True

@@ -1,0 +1,763 @@
+{
+ "what": "Second pass (RobotAgent role 'search'). before = fleet_search.py at 7b7a444 (sha cd008d72), after = with pass2.diff (sha 417e00f6); both with fleet_reflex.py as at ab9f1c3. Four robots, coordinated, paired seeds, n = 20 per cell. 'sweep_on' cells have the beacon moved out of reach to measure unswept ground. seeds_100_119 were scored with the code before one bug fix (sha 2c10e06a) and are kept for the record.",
+ "final_seeds_140_159": {
+  "clean_off": {
+   "before": "out/f2_clean_off_base.jsonl",
+   "after": "out/f2_clean_off_new.jsonl",
+   "sha_before": {
+    "fleet_search.py": "cd008d72c32cb9b4",
+    "fleet_comms.py": "e630863bb152ca5c",
+    "fleet_sim.py": "8b8dc6c711aa6091",
+    "fleet_reflex.py": "b6d97e8e817b692a"
+   },
+   "sha_after": {
+    "fleet_search.py": "417e00f62f33a316",
+    "fleet_comms.py": "e630863bb152ca5c",
+    "fleet_sim.py": "8b8dc6c711aa6091",
+    "fleet_reflex.py": "b6d97e8e817b692a"
+   },
+   "cell": [
+    "clean",
+    false,
+    false
+   ],
+   "summary_before": {
+    "n": 20,
+    "located": 17,
+    "assembled": 13,
+    "robots_lost_per_mission": 1.2,
+    "robots_lost_total": 24,
+    "median_s_to_locate": 25.6,
+    "median_s_to_assemble": 30.7,
+    "mean_duration_s": 34.2,
+    "missions_with_second_pass": 0,
+    "robots_lost_in_second_pass": 0,
+    "ice_events_in_second_pass": 0,
+    "robot_metres_mean": 41.2
+   },
+   "summary_after": {
+    "n": 20,
+    "located": 20,
+    "assembled": 13,
+    "robots_lost_per_mission": 1.2,
+    "robots_lost_total": 24,
+    "median_s_to_locate": 27.9,
+    "median_s_to_assemble": 30.7,
+    "mean_duration_s": 38.6,
+    "missions_with_second_pass": 3,
+    "robots_lost_in_second_pass": 0,
+    "ice_events_in_second_pass": 0,
+    "robot_metres_mean": 43.9
+   },
+   "paired": {
+    "pairs": 20,
+    "identical_missions": 17,
+    "differing_seeds": [
+     143,
+     151,
+     158
+    ],
+    "locate_gained": [
+     143,
+     151,
+     158
+    ],
+    "locate_lost": [],
+    "assembly_gained": [],
+    "assembly_lost": [],
+    "more_robots_lost": [],
+    "fewer_robots_lost": [],
+    "second_pass_seeds": [
+     143,
+     151,
+     158
+    ]
+   }
+  },
+  "clean_on": {
+   "before": "out/f2_clean_on_base.jsonl",
+   "after": "out/f2_clean_on_new.jsonl",
+   "sha_before": {
+    "fleet_search.py": "cd008d72c32cb9b4",
+    "fleet_comms.py": "e630863bb152ca5c",
+    "fleet_sim.py": "8b8dc6c711aa6091",
+    "fleet_reflex.py": "b6d97e8e817b692a"
+   },
+   "sha_after": {
+    "fleet_search.py": "417e00f62f33a316",
+    "fleet_comms.py": "e630863bb152ca5c",
+    "fleet_sim.py": "8b8dc6c711aa6091",
+    "fleet_reflex.py": "b6d97e8e817b692a"
+   },
+   "cell": [
+    "clean",
+    true,
+    false
+   ],
+   "summary_before": {
+    "n": 20,
+    "located": 20,
+    "assembled": 20,
+    "robots_lost_per_mission": 0.05,
+    "robots_lost_total": 1,
+    "median_s_to_locate": 32.5,
+    "median_s_to_assemble": 39.6,
+    "mean_duration_s": 39.8,
+    "missions_with_second_pass": 0,
+    "robots_lost_in_second_pass": 0,
+    "ice_events_in_second_pass": 0,
+    "robot_metres_mean": 48.5
+   },
+   "summary_after": {
+    "n": 20,
+    "located": 20,
+    "assembled": 20,
+    "robots_lost_per_mission": 0.05,
+    "robots_lost_total": 1,
+    "median_s_to_locate": 32.5,
+    "median_s_to_assemble": 39.6,
+    "mean_duration_s": 39.8,
+    "missions_with_second_pass": 0,
+    "robots_lost_in_second_pass": 0,
+    "ice_events_in_second_pass": 0,
+    "robot_metres_mean": 48.5
+   },
+   "paired": {
+    "pairs": 20,
+    "identical_missions": 20,
+    "differing_seeds": [],
+    "locate_gained": [],
+    "locate_lost": [],
+    "assembly_gained": [],
+    "assembly_lost": [],
+    "more_robots_lost": [],
+    "fewer_robots_lost": [],
+    "second_pass_seeds": []
+   }
+  },
+  "r3_on": {
+   "before": "out/f2_r3_on_base.jsonl",
+   "after": "out/f2_r3_on_new.jsonl",
+   "sha_before": {
+    "fleet_search.py": "cd008d72c32cb9b4",
+    "fleet_comms.py": "e630863bb152ca5c",
+    "fleet_sim.py": "8b8dc6c711aa6091",
+    "fleet_reflex.py": "b6d97e8e817b692a"
+   },
+   "sha_after": {
+    "fleet_search.py": "417e00f62f33a316",
+    "fleet_comms.py": "e630863bb152ca5c",
+    "fleet_sim.py": "8b8dc6c711aa6091",
+    "fleet_reflex.py": "b6d97e8e817b692a"
+   },
+   "cell": [
+    "r3",
+    true,
+    false
+   ],
+   "summary_before": {
+    "n": 20,
+    "located": 20,
+    "assembled": 19,
+    "robots_lost_per_mission": 0.2,
+    "robots_lost_total": 4,
+    "median_s_to_locate": 28.6,
+    "median_s_to_assemble": 41.2,
+    "mean_duration_s": 42.2,
+    "missions_with_second_pass": 0,
+    "robots_lost_in_second_pass": 0,
+    "ice_events_in_second_pass": 0,
+    "robot_metres_mean": 49.4
+   },
+   "summary_after": {
+    "n": 20,
+    "located": 20,
+    "assembled": 20,
+    "robots_lost_per_mission": 0.2,
+    "robots_lost_total": 4,
+    "median_s_to_locate": 28.6,
+    "median_s_to_assemble": 41.2,
+    "mean_duration_s": 42.0,
+    "missions_with_second_pass": 2,
+    "robots_lost_in_second_pass": 0,
+    "ice_events_in_second_pass": 0,
+    "robot_metres_mean": 49.6
+   },
+   "paired": {
+    "pairs": 20,
+    "identical_missions": 18,
+    "differing_seeds": [
+     142,
+     146
+    ],
+    "locate_gained": [],
+    "locate_lost": [],
+    "assembly_gained": [
+     146
+    ],
+    "assembly_lost": [],
+    "more_robots_lost": [],
+    "fewer_robots_lost": [],
+    "second_pass_seeds": [
+     142,
+     146
+    ]
+   }
+  },
+  "sweep_on": {
+   "before": "out/f2_sweep_on_base.jsonl",
+   "after": "out/f2_sweep_on_new.jsonl",
+   "sha_before": {
+    "fleet_search.py": "cd008d72c32cb9b4",
+    "fleet_comms.py": "e630863bb152ca5c",
+    "fleet_sim.py": "8b8dc6c711aa6091",
+    "fleet_reflex.py": "b6d97e8e817b692a"
+   },
+   "sha_after": {
+    "fleet_search.py": "417e00f62f33a316",
+    "fleet_comms.py": "e630863bb152ca5c",
+    "fleet_sim.py": "8b8dc6c711aa6091",
+    "fleet_reflex.py": "b6d97e8e817b692a"
+   },
+   "cell": [
+    "clean",
+    true,
+    true
+   ],
+   "summary_before": {
+    "n": 20,
+    "located": 0,
+    "assembled": 0,
+    "robots_lost_per_mission": 0.05,
+    "robots_lost_total": 1,
+    "median_s_to_locate": null,
+    "median_s_to_assemble": null,
+    "mean_duration_s": 67.4,
+    "missions_with_second_pass": 0,
+    "robots_lost_in_second_pass": 0,
+    "ice_events_in_second_pass": 0,
+    "robot_metres_mean": 68.3,
+    "unswept_mean_pct": 0.21,
+    "unswept_worst_pct": 3.82,
+    "layouts_with_unswept_ground": 3,
+    "unswept_after_first_pass_mean_pct": 0.21
+   },
+   "summary_after": {
+    "n": 20,
+    "located": 0,
+    "assembled": 0,
+    "robots_lost_per_mission": 0.05,
+    "robots_lost_total": 1,
+    "median_s_to_locate": null,
+    "median_s_to_assemble": null,
+    "mean_duration_s": 77.3,
+    "missions_with_second_pass": 19,
+    "robots_lost_in_second_pass": 0,
+    "ice_events_in_second_pass": 5,
+    "robot_metres_mean": 81.5,
+    "unswept_mean_pct": 0.0,
+    "unswept_worst_pct": 0.04,
+    "layouts_with_unswept_ground": 1,
+    "unswept_after_first_pass_mean_pct": 0.21
+   },
+   "paired": {
+    "pairs": 20,
+    "identical_missions": 1,
+    "differing_seeds": [
+     140,
+     141,
+     142,
+     143,
+     144,
+     145,
+     146,
+     147,
+     148,
+     149,
+     150,
+     151,
+     152,
+     153,
+     154,
+     155,
+     156,
+     157,
+     158
+    ],
+    "locate_gained": [],
+    "locate_lost": [],
+    "assembly_gained": [],
+    "assembly_lost": [],
+    "more_robots_lost": [],
+    "fewer_robots_lost": [],
+    "second_pass_seeds": [
+     140,
+     141,
+     142,
+     143,
+     144,
+     145,
+     146,
+     147,
+     148,
+     149,
+     150,
+     151,
+     152,
+     153,
+     154,
+     155,
+     156,
+     157,
+     158
+    ]
+   }
+  }
+ },
+ "seeds_100_119_pre_fix": {
+  "clean_off": {
+   "before": "out/final_clean_off_base.jsonl",
+   "after": "out/final_clean_off_new.jsonl",
+   "sha_before": {
+    "fleet_search.py": "cd008d72c32cb9b4",
+    "fleet_comms.py": "e630863bb152ca5c",
+    "fleet_sim.py": "8b8dc6c711aa6091",
+    "fleet_reflex.py": "b6d97e8e817b692a"
+   },
+   "sha_after": {
+    "fleet_search.py": "2c10e06a6029834c",
+    "fleet_comms.py": "e630863bb152ca5c",
+    "fleet_sim.py": "8b8dc6c711aa6091",
+    "fleet_reflex.py": "b6d97e8e817b692a"
+   },
+   "cell": [
+    "clean",
+    false,
+    false
+   ],
+   "summary_before": {
+    "n": 20,
+    "located": 20,
+    "assembled": 16,
+    "robots_lost_per_mission": 0.95,
+    "robots_lost_total": 19,
+    "median_s_to_locate": 25.5,
+    "median_s_to_assemble": 30.5,
+    "mean_duration_s": 32.1,
+    "missions_with_second_pass": 0,
+    "robots_lost_in_second_pass": 0,
+    "ice_events_in_second_pass": 0,
+    "robot_metres_mean": 40.5
+   },
+   "summary_after": {
+    "n": 20,
+    "located": 20,
+    "assembled": 16,
+    "robots_lost_per_mission": 0.95,
+    "robots_lost_total": 19,
+    "median_s_to_locate": 25.5,
+    "median_s_to_assemble": 30.5,
+    "mean_duration_s": 32.1,
+    "missions_with_second_pass": 0,
+    "robots_lost_in_second_pass": 0,
+    "ice_events_in_second_pass": 0,
+    "robot_metres_mean": 40.5
+   },
+   "paired": {
+    "pairs": 20,
+    "identical_missions": 20,
+    "differing_seeds": [],
+    "locate_gained": [],
+    "locate_lost": [],
+    "assembly_gained": [],
+    "assembly_lost": [],
+    "more_robots_lost": [],
+    "fewer_robots_lost": [],
+    "second_pass_seeds": []
+   }
+  },
+  "clean_on": {
+   "before": "out/final_clean_on_base.jsonl",
+   "after": "out/final_clean_on_new.jsonl",
+   "sha_before": {
+    "fleet_search.py": "cd008d72c32cb9b4",
+    "fleet_comms.py": "e630863bb152ca5c",
+    "fleet_sim.py": "8b8dc6c711aa6091",
+    "fleet_reflex.py": "b6d97e8e817b692a"
+   },
+   "sha_after": {
+    "fleet_search.py": "2c10e06a6029834c",
+    "fleet_comms.py": "e630863bb152ca5c",
+    "fleet_sim.py": "8b8dc6c711aa6091",
+    "fleet_reflex.py": "b6d97e8e817b692a"
+   },
+   "cell": [
+    "clean",
+    true,
+    false
+   ],
+   "summary_before": {
+    "n": 20,
+    "located": 20,
+    "assembled": 20,
+    "robots_lost_per_mission": 0.15,
+    "robots_lost_total": 3,
+    "median_s_to_locate": 30.4,
+    "median_s_to_assemble": 39.3,
+    "mean_duration_s": 39.0,
+    "missions_with_second_pass": 0,
+    "robots_lost_in_second_pass": 0,
+    "ice_events_in_second_pass": 0,
+    "robot_metres_mean": 46.3
+   },
+   "summary_after": {
+    "n": 20,
+    "located": 20,
+    "assembled": 20,
+    "robots_lost_per_mission": 0.15,
+    "robots_lost_total": 3,
+    "median_s_to_locate": 30.4,
+    "median_s_to_assemble": 39.3,
+    "mean_duration_s": 39.0,
+    "missions_with_second_pass": 0,
+    "robots_lost_in_second_pass": 0,
+    "ice_events_in_second_pass": 0,
+    "robot_metres_mean": 46.3
+   },
+   "paired": {
+    "pairs": 20,
+    "identical_missions": 20,
+    "differing_seeds": [],
+    "locate_gained": [],
+    "locate_lost": [],
+    "assembly_gained": [],
+    "assembly_lost": [],
+    "more_robots_lost": [],
+    "fewer_robots_lost": [],
+    "second_pass_seeds": []
+   }
+  },
+  "r3_on": {
+   "before": "out/final_r3_on_base.jsonl",
+   "after": "out/final_r3_on_new.jsonl",
+   "sha_before": {
+    "fleet_search.py": "cd008d72c32cb9b4",
+    "fleet_comms.py": "e630863bb152ca5c",
+    "fleet_sim.py": "8b8dc6c711aa6091",
+    "fleet_reflex.py": "b6d97e8e817b692a"
+   },
+   "sha_after": {
+    "fleet_search.py": "2c10e06a6029834c",
+    "fleet_comms.py": "e630863bb152ca5c",
+    "fleet_sim.py": "8b8dc6c711aa6091",
+    "fleet_reflex.py": "b6d97e8e817b692a"
+   },
+   "cell": [
+    "r3",
+    true,
+    false
+   ],
+   "summary_before": {
+    "n": 20,
+    "located": 20,
+    "assembled": 15,
+    "robots_lost_per_mission": 0.05,
+    "robots_lost_total": 1,
+    "median_s_to_locate": 28.4,
+    "median_s_to_assemble": 33.2,
+    "mean_duration_s": 40.9,
+    "missions_with_second_pass": 0,
+    "robots_lost_in_second_pass": 0,
+    "ice_events_in_second_pass": 0,
+    "robot_metres_mean": 49.3
+   },
+   "summary_after": {
+    "n": 20,
+    "located": 20,
+    "assembled": 20,
+    "robots_lost_per_mission": 0.05,
+    "robots_lost_total": 1,
+    "median_s_to_locate": 28.4,
+    "median_s_to_assemble": 35.2,
+    "mean_duration_s": 44.5,
+    "missions_with_second_pass": 5,
+    "robots_lost_in_second_pass": 0,
+    "ice_events_in_second_pass": 3,
+    "robot_metres_mean": 53.8
+   },
+   "paired": {
+    "pairs": 20,
+    "identical_missions": 15,
+    "differing_seeds": [
+     102,
+     110,
+     115,
+     118,
+     119
+    ],
+    "locate_gained": [],
+    "locate_lost": [],
+    "assembly_gained": [
+     102,
+     110,
+     115,
+     118,
+     119
+    ],
+    "assembly_lost": [],
+    "more_robots_lost": [],
+    "fewer_robots_lost": [],
+    "second_pass_seeds": [
+     102,
+     110,
+     115,
+     118,
+     119
+    ]
+   }
+  },
+  "sweep_on": {
+   "before": "out/final_sweep_on_base.jsonl",
+   "after": "out/final_sweep_on_new.jsonl",
+   "sha_before": {
+    "fleet_search.py": "cd008d72c32cb9b4",
+    "fleet_comms.py": "e630863bb152ca5c",
+    "fleet_sim.py": "8b8dc6c711aa6091",
+    "fleet_reflex.py": "b6d97e8e817b692a"
+   },
+   "sha_after": {
+    "fleet_search.py": "2c10e06a6029834c",
+    "fleet_comms.py": "e630863bb152ca5c",
+    "fleet_sim.py": "8b8dc6c711aa6091",
+    "fleet_reflex.py": "b6d97e8e817b692a"
+   },
+   "cell": [
+    "clean",
+    true,
+    true
+   ],
+   "summary_before": {
+    "n": 20,
+    "located": 0,
+    "assembled": 0,
+    "robots_lost_per_mission": 0.2,
+    "robots_lost_total": 4,
+    "median_s_to_locate": null,
+    "median_s_to_assemble": null,
+    "mean_duration_s": 62.5,
+    "missions_with_second_pass": 0,
+    "robots_lost_in_second_pass": 0,
+    "ice_events_in_second_pass": 0,
+    "robot_metres_mean": 66.1,
+    "unswept_mean_pct": 0.5,
+    "unswept_worst_pct": 4.76,
+    "layouts_with_unswept_ground": 4,
+    "unswept_after_first_pass_mean_pct": 0.5
+   },
+   "summary_after": {
+    "n": 20,
+    "located": 0,
+    "assembled": 0,
+    "robots_lost_per_mission": 0.25,
+    "robots_lost_total": 5,
+    "median_s_to_locate": null,
+    "median_s_to_assemble": null,
+    "mean_duration_s": 75.9,
+    "missions_with_second_pass": 20,
+    "robots_lost_in_second_pass": 1,
+    "ice_events_in_second_pass": 9,
+    "robot_metres_mean": 81.9,
+    "unswept_mean_pct": 0.0,
+    "unswept_worst_pct": 0.0,
+    "layouts_with_unswept_ground": 0,
+    "unswept_after_first_pass_mean_pct": 0.5
+   },
+   "paired": {
+    "pairs": 20,
+    "identical_missions": 0,
+    "differing_seeds": [
+     100,
+     101,
+     102,
+     103,
+     104,
+     105,
+     106,
+     107,
+     108,
+     109,
+     110,
+     111,
+     112,
+     113,
+     114,
+     115,
+     116,
+     117,
+     118,
+     119
+    ],
+    "locate_gained": [],
+    "locate_lost": [],
+    "assembly_gained": [],
+    "assembly_lost": [],
+    "more_robots_lost": [
+     106
+    ],
+    "fewer_robots_lost": [],
+    "second_pass_seeds": [
+     100,
+     101,
+     102,
+     103,
+     104,
+     105,
+     106,
+     107,
+     108,
+     109,
+     110,
+     111,
+     112,
+     113,
+     114,
+     115,
+     116,
+     117,
+     118,
+     119
+    ]
+   }
+  }
+ },
+ "regression_seeds_60_79": {
+  "off": {
+   "before": "out/reg_off_base.jsonl",
+   "after": "out/reg2_off_new.jsonl",
+   "sha_before": {
+    "fleet_search.py": "cd008d72c32cb9b4",
+    "fleet_comms.py": "e630863bb152ca5c",
+    "fleet_sim.py": "8b8dc6c711aa6091",
+    "fleet_reflex.py": "b6d97e8e817b692a"
+   },
+   "sha_after": {
+    "fleet_search.py": "417e00f62f33a316",
+    "fleet_comms.py": "e630863bb152ca5c",
+    "fleet_sim.py": "8b8dc6c711aa6091",
+    "fleet_reflex.py": "b6d97e8e817b692a"
+   },
+   "cell": [
+    "clean",
+    false,
+    false
+   ],
+   "summary_before": {
+    "n": 20,
+    "located": 19,
+    "assembled": 11,
+    "robots_lost_per_mission": 1.45,
+    "robots_lost_total": 29,
+    "median_s_to_locate": 25.7,
+    "median_s_to_assemble": 28.9,
+    "mean_duration_s": 35.6,
+    "missions_with_second_pass": 0,
+    "robots_lost_in_second_pass": 0,
+    "ice_events_in_second_pass": 0,
+    "robot_metres_mean": 40.3
+   },
+   "summary_after": {
+    "n": 20,
+    "located": 20,
+    "assembled": 11,
+    "robots_lost_per_mission": 1.45,
+    "robots_lost_total": 29,
+    "median_s_to_locate": 26.4,
+    "median_s_to_assemble": 28.9,
+    "mean_duration_s": 36.4,
+    "missions_with_second_pass": 1,
+    "robots_lost_in_second_pass": 0,
+    "ice_events_in_second_pass": 0,
+    "robot_metres_mean": 40.7
+   },
+   "paired": {
+    "pairs": 20,
+    "identical_missions": 19,
+    "differing_seeds": [
+     79
+    ],
+    "locate_gained": [
+     79
+    ],
+    "locate_lost": [],
+    "assembly_gained": [],
+    "assembly_lost": [],
+    "more_robots_lost": [],
+    "fewer_robots_lost": [],
+    "second_pass_seeds": [
+     79
+    ]
+   }
+  },
+  "on": {
+   "before": "out/reg_on_base.jsonl",
+   "after": "out/reg2_on_new.jsonl",
+   "sha_before": {
+    "fleet_search.py": "cd008d72c32cb9b4",
+    "fleet_comms.py": "e630863bb152ca5c",
+    "fleet_sim.py": "8b8dc6c711aa6091",
+    "fleet_reflex.py": "b6d97e8e817b692a"
+   },
+   "sha_after": {
+    "fleet_search.py": "417e00f62f33a316",
+    "fleet_comms.py": "e630863bb152ca5c",
+    "fleet_sim.py": "8b8dc6c711aa6091",
+    "fleet_reflex.py": "b6d97e8e817b692a"
+   },
+   "cell": [
+    "clean",
+    true,
+    false
+   ],
+   "summary_before": {
+    "n": 20,
+    "located": 20,
+    "assembled": 20,
+    "robots_lost_per_mission": 0.05,
+    "robots_lost_total": 1,
+    "median_s_to_locate": 37.0,
+    "median_s_to_assemble": 47.3,
+    "mean_duration_s": 43.1,
+    "missions_with_second_pass": 0,
+    "robots_lost_in_second_pass": 0,
+    "ice_events_in_second_pass": 0,
+    "robot_metres_mean": 50.4
+   },
+   "summary_after": {
+    "n": 20,
+    "located": 20,
+    "assembled": 20,
+    "robots_lost_per_mission": 0.05,
+    "robots_lost_total": 1,
+    "median_s_to_locate": 37.0,
+    "median_s_to_assemble": 47.3,
+    "mean_duration_s": 43.1,
+    "missions_with_second_pass": 0,
+    "robots_lost_in_second_pass": 0,
+    "ice_events_in_second_pass": 0,
+    "robot_metres_mean": 50.4
+   },
+   "paired": {
+    "pairs": 20,
+    "identical_missions": 20,
+    "differing_seeds": [],
+    "locate_gained": [],
+    "locate_lost": [],
+    "assembly_gained": [],
+    "assembly_lost": [],
+    "more_robots_lost": [],
+    "fewer_robots_lost": [],
+    "second_pass_seeds": []
+   }
+  }
+ }
+}
