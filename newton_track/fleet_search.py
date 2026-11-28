@@ -68,7 +68,21 @@ from g1_newton import POLICY_HZ  # noqa: E402
 # -- mission constants ----------------------------------------------------
 FIELD = (0.0, 12.0, 0.0, 14.0)  # xmin, xmax, ymin, ymax, metres
 SENSE_RANGE = 2.0  # transceiver range. Lanes must be narrower than twice this
-V_SWEEP = 0.5  # m/s commanded
+# Walking speed, m/s commanded, everywhere a robot chooses its own pace: the
+# sweep, a helper converging on the dig, the second pass. `--sweep-speed` sets
+# it. 0.5 holds on the default ice, which stands 2 mm proud of the snow. On ice
+# flush with the snow it loses about a robot a mission, and 0.35 loses none:
+# in the reflex harness on flush ice at friction 0.08, square-on, falls with
+# the reflex on are 0 of 64 at 0.35, 2 of 64 at 0.38, 19 of 64 at 0.40 and 32
+# of 32 at 0.45. The price of 0.35 is a dig team about 16 s later and little of
+# the 100 s limit to spare, which is why it is not the default (FLEET.md,
+# "Flush ice, and how fast to sweep").
+V_SWEEP = 0.5
+V_PINPOINT = 0.35  # the robot walking onto the beacon. Never faster than V_SWEEP
+# m/s commanded: a sweeper ahead of the line slows down to this and no further.
+# Not scaled with V_SWEEP: at 0.35, a floor of 0.3 * V_SWEEP was no faster and
+# cost one mission in twenty its dig team (seeds 180-199, flush ice).
+PACE_FLOOR = 0.15
 DIG_RADIUS = 1.1  # dig positions sit on a ring this far from the burial point
 ASSEMBLED_WITHIN = 1.7  # a robot this close to the true beacon and holding counts as on the dig team
 TEAM_SIZE = 3
@@ -676,7 +690,7 @@ class RobotAgent:
                     self.role = "hold"
                     return self._keep_station(me, self.found), out
                 self.role = "locate"
-                cmd = self._go(me, goal, 0.35, 0.3)
+                cmd = self._go(me, goal, min(V_PINPOINT, V_SWEEP), 0.3)
                 close = reading is not None and reading[0] < 0.6
                 self.stuck_ticks = self.stuck_ticks + 1 if cmd[0] == 0.0 and abs(cmd[2]) < 0.2 else 0
                 if self.found is None and (close or (self.stuck_ticks > POLICY_HZ and reading is not None)):
@@ -712,7 +726,7 @@ class RobotAgent:
         v = V_SWEEP
         if self.coordinated:
             ahead = me[1] - self._line_y(t, me)
-            v = float(np.clip(V_SWEEP - 0.6 * ahead, 0.15, V_SWEEP))
+            v = float(np.clip(V_SWEEP - 0.6 * ahead, PACE_FLOOR, V_SWEEP))
         return self._yield_to_others(t, me, self._go(me, (lane_x, ahead_y), v, 0.25)), out
 
     # ---- relaying: what rides on the heartbeat, and what is done with it ----
@@ -1239,7 +1253,11 @@ def main() -> int:
     ap.add_argument("--reflex", action="store_true", help="enable the slip reflex (fleet_reflex.py) on every robot")
     ap.add_argument("--film", type=int, default=None, metavar="SEED", help="render one mission instead of evaluating")
     ap.add_argument("--out", default=None)
+    ap.add_argument("--sweep-speed", type=float, default=None, metavar="M_S",
+                    help=f"walking speed commanded, default {V_SWEEP}. 0.35 is the safe speed on flush ice")  # fmt: skip
     args = ap.parse_args()
+    if args.sweep_speed is not None:
+        globals()["V_SWEEP"] = args.sweep_speed
 
     if args.film is not None:
         mode = "coordinated" if args.mode == "both" else args.mode
@@ -1266,7 +1284,7 @@ def main() -> int:
     out.parent.mkdir(exist_ok=True)
     out.write_text(json.dumps({
         "robots": args.robots, "field": FIELD, "sense_range": SENSE_RANGE, "ice_mu": ICE_MU, "snow_mu": SNOW_MU,
-        "reflex": args.reflex, "seed_start": args.seed_start, "summary": summary, "rows": rows,
+        "reflex": args.reflex, "seed_start": args.seed_start, "v_sweep": V_SWEEP, "summary": summary, "rows": rows,
     }, indent=1))  # fmt: skip
     print(f"\nwrote {out}  ({time.time() - t0:.0f} s)")
     return 0

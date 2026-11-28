@@ -76,6 +76,7 @@ npy newton_track/fleet_sim.py                              # measured snow and i
 npy newton_track/fleet_reflex.py                           # reflex tables (slow)
 npy newton_track/fleet_search.py --seeds 20 --seed-start 60 --reflex   # 25 min
 npy newton_track/fleet_search.py --film 25 --reflex        # one mission to demo/, needs a display
+npy newton_track/fleet_search.py --seeds 20 --reflex --sweep-speed 0.35   # the safe speed for flush ice
 npy newton_track/fleet_comms.py --help                     # radio and team-size studies (hours)
 npy newton_track/report.py                                 # regenerate the tables below
 ```
@@ -601,14 +602,71 @@ and no alarm. Robots actually made 0.41, 0.28 and 0.18 m/s for 0.5, 0.35 and
 - **0.25 m/s is too slow for a 100 s mission.** Nobody is lost, but nine of
   forty missions run out of clock. Run on past the limit, all nine assemble by
   127 s.
-- **Not established**: 0.35 on flush ice has no backing from the reflex harness,
-  which only has 0.5 and 0.25, and no loss in 33 encounters still allows a true
-  rate of several per cent. The pinpointing robot walks at a fixed 0.35 m/s and
-  the pacing rule has an absolute floor, so the slow cells are not a clean
-  scaling of the fast one.
-- **Nothing here changes the default.** Missions still sweep at 0.5 m/s on
-  raised ice. Slowing down only over ground nobody has walked yet is the
-  obvious next rule and was not built.
+- **The pinpointing robot walked at a fixed 0.35 m/s in every cell** and the
+  pacing rule has an absolute floor, so the slow cells are not a clean scaling
+  of the fast one.
+
+### Where the safe speed is, and why it is not the default
+
+A second agent then looked for the threshold and scored 0.35 m/s on fresh
+seeds. Rows are in `results/fleet_speed.json`.
+
+The reflex harness, flush ice at friction 0.08, reflex on, harness seeds
+400-495. All 1,024 encounters were detected.
+
+| Commanded m/s | Made m/s | Square-on falls | 45 degree falls | 45 degree, released with a foot on ice |
+|---|---|---|---|---|
+| 0.30 | 0.24 | 0/32 | 0/32 | 1/32 |
+| 0.35 | 0.29 | 0/64 | 0/64 | 7/64 |
+| 0.36 | 0.30 | 0/32 | 0/32 | 4/32 |
+| 0.37 | 0.31 | 0/32 | 0/32 | 2/32 |
+| 0.38 | 0.32 | 2/64 | 0/64 | 13/64 |
+| 0.39 | 0.33 | 1/32 | 0/32 | 8/32 |
+| 0.40 | 0.34 | 19/64 | 0/64 | 19/64 |
+| 0.41 | 0.35 | 20/32 | 0/32 | 16/32 |
+| 0.45 | 0.39 | 32/32 | 0/32 | 24/32 |
+
+On raised ice the same harness loses 4 of 256 with no trend in speed.
+
+Missions, seeds 220-239, twenty per cell, the same seeds in each, scored once:
+
+| Ice | Sweep m/s | Located | Assembled | Robots lost in 20 | Median s to assemble | Hit the 100 s limit |
+|---|---|---|---|---|---|---|
+| flush | 0.5 | 20/20 | 18/20 | 17 | 37.0 | 0 |
+| flush | 0.38 | 20/20 | 19/20 | 2 | 47.0 | 1 |
+| flush | 0.35 | 20/20 | 20/20 | 0 | 53.2 | 0 |
+| raised | 0.5 | 20/20 | 20/20 | 1 | 39.3 | 0 |
+| raised | 0.38 | 20/20 | 19/20 | 1 | 52.1 | 1 |
+| raised | 0.35 | 19/20 | 19/20 | 0 | 54.9 | 1 |
+
+- **The cliff is sharp.** Square-on falls start at 0.38 m/s and reach one in
+  three at 0.40. At 0.35, 0 of 64 puts the true rate under 4.6 % per encounter
+  (95 % bound).
+- **0.35 m/s holds on fresh seeds.** On flush ice robots lost go 17 to 0, fewer
+  on 14 seeds and more on none (sign test p = 0.0001), and all twenty dig teams
+  assemble. Over this set and the last, nobody was lost in 40 flush missions at
+  0.35.
+- **It costs about 16 s a mission and the clock.** On raised ice 0.35 is slower
+  on 19 of 19 seeds, median 16.1 s, and one mission (seed 227) ran out of time:
+  a robot fell 3 m behind, the sweep left a hole, and the second pass found the
+  beacon at 116 s. On flush ice 3 of 20 missions assembled after 85 s.
+- **0.38 m/s was tried as a compromise and rejected.** It looked clean on the
+  development seeds (20/20, nobody lost). On fresh seeds it lost two robots on
+  flush ice and one dig team on each ground. The acceptance rule was written
+  down before the run.
+- **Going fast over walked ground is not worth building.** Under 3 % of the
+  metres a robot walks are over ground a teammate has already crossed. The
+  busiest robot would save about 0.7 s in a 53 s mission. This is a measured
+  bound, not a run.
+- **A robot cannot tell the two kinds of ice apart from its own stop.** The
+  slide after the alarm at 0.35 is 6.4 to 7.3 cm on flush ice and 5.0 to 7.7 cm
+  on raised, so "slow down only on flush ice" has nothing to key on.
+- **The default is still 0.5 m/s on raised ice.** `--sweep-speed 0.35` selects
+  the safe speed. With no option the mission is tick for tick what it was. The
+  default stays because 0.35 leaves too little of the 100 s limit until the
+  second pass is quicker.
+- **Not tested at 0.35**: any friction but 0.08, a lossy or short radio, other
+  team sizes, the radio off, gradual ice edges, ice met while turning.
 
 ## What went wrong on the way, and what it taught
 
@@ -657,9 +715,9 @@ Other things the missions exposed:
 - **The ice in the main tables is easy to detect, and the reflex needs that.**
   Patches stand 2 mm proud of the snow with a sharp edge and one friction
   value. On flush ice of the same friction the team loses about a robot a
-  mission at the default sweep speed, and none at 0.35 m/s ("Flush ice, and how
-  fast to sweep"). A gradual edge, and a robot that meets ice while turning or
-  standing, were not tested.
+  mission at the default sweep speed, and none in 40 missions at 0.35 m/s
+  (`--sweep-speed 0.35`; "Flush ice, and how fast to sweep"). A gradual edge,
+  and a robot that meets ice while turning or standing, were not tested.
 - **The world is flat and the sensor is simple.** No slope, no wind, a
   transceiver with clean range and bearing inside 2 m and nothing outside it.
 - **The radio is perfect** in the main tables. With the roster-memory fix the
