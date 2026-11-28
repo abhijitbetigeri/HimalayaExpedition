@@ -577,6 +577,7 @@ class RobotAgent:
         self.lost_seen = {}  # id -> tick I learned it was down
         self.arrived = set()  # teammates whose first pass is over: heard parked at the far end, or on a second pass
         self.far_since = None  # the tick I first stood at the far end myself
+        self.lane_end = {}  # id -> x where a teammate that has finished its first pass left its lane
         self.unsearched_m2 = None  # by my map, at my last look
 
     # ---- shared rules: every agent computes these from the same roster ----
@@ -588,14 +589,32 @@ class RobotAgent:
         """Sweepers level with the front, left to right. A robot more than
         STRAGGLER_GAP behind (backing off ice, working round a hazard) is left
         out, so the others close up over its lane instead of waiting for it:
-        on seed 8 they swept on in their old lanes and walked past the beacon."""
+        on seed 8 they swept on in their old lanes and walked past the beacon.
+
+        A robot that has finished its first pass (`arrived`: heard parked at
+        the far end, or on its second pass) keeps its lane in the split, at
+        the x where it was first heard there, for as long as I am in the
+        line. Parking used to drop it from the split like a fall, so the last
+        robot up re-split the field among the robots still walking: with
+        three teammates parked its lane became the middle of the field, and
+        it walked along the far line and into them. A lane that has been
+        swept to the end is not one to close up over. Finished robots are not
+        part of the front and nobody keeps pace with them."""
         ys = {self.id: me[1]}
         xs = {self.id: me[0]}
         for r, i in self._heard(t).items():
-            if i["role"] in ("sweep", "backoff"):
+            if i["role"] in ("sweep", "backoff") and r not in self.arrived:
                 ys[r], xs[r] = i["y"], i["x"]
         front = max(ys.values())
-        return sorted((r for r in ys if ys[r] >= front - STRAGGLER_GAP), key=lambda r: (xs[r], r))
+        line = [r for r in ys if ys[r] >= front - STRAGGLER_GAP]
+        ends = self.lane_end
+        for r in self.arrived:
+            if r not in ends and self.roster[r]["y"] >= FIELD[3] - 0.5:
+                ends[r] = self.roster[r]["x"]
+        if self.id in line:
+            xs.update(ends)
+            line += list(ends)
+        return sorted(line, key=lambda r: (xs[r], r))
 
     def _lane_x(self, t: int, me) -> float:
         if not self.coordinated:
@@ -614,7 +633,7 @@ class RobotAgent:
         # Remember a quiet teammate, but only keep pace with positions that are fresh.
         # A relayed position carries its true age (`_merge_news`), so one that
         # crossed two robots has that much less of its 1.5 s left.
-        ys = [me[1]] + [heard[r]["y"] for r in order if r != self.id and t - heard[r]["t"] <= LOST_AFTER]
+        ys = [me[1]] + [heard[r]["y"] for r in order if r != self.id and r not in self.arrived and t - heard[r]["t"] <= LOST_AFTER]
         return float(np.mean(ys))
 
     def _slot_xy(self, k: int, centre) -> tuple[float, float]:

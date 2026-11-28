@@ -545,7 +545,83 @@ tick.
   fresh beacon-in-reach missions.
 - **Left alone, outside the agent's part of the code**: the first pass itself,
   and the lane split at the far end, which pulls the last robot sideways along
-  the line and is the cause of most of the waiting.
+  the line and is the cause of most of the waiting. The lane split is fixed in
+  the next section.
+
+### The lane split at the far end
+
+The field is split into lanes among the robots still sweeping. Parking at the
+far end dropped a robot from that split exactly as a fall does, so each arrival
+re-split the field among the robots still walking, and the last one up was
+handed the middle of the field. Rows are in `results/fleet_farend.json`.
+
+Measured first, beacon out of reach, reflex on, 21 layouts (seeds 140-159 and
+214):
+
+- **77 lane changes in 21 of 21 layouts**, median jump 1.5 m, largest 3.0 m.
+- **It flickers.** A parked robot that drifts off the line counts as sweeping
+  again and rejoins the split, so the late robot's lane flips back and forth.
+- **Seed 141**: the last robot's lane went from x 10.5 to 6.0 within 0.06 s and
+  flipped six more times. It took 11.2 s over a 1.4 s walk and parked 2.2 m
+  sideways. **Seed 158**: a straggler walked 12.3 m and took 33.7 s where 9.5 s
+  would do.
+- **The mirror cases are fine.** When the beacon is heard, everyone hears it on
+  the same tick and no lane changes (0 in 28 missions). Closing up over a
+  fallen robot's lane was tested by removing it, 40 reflex-off missions:
+  assembled 27 to 28 (p = 1.0), robots lost 48 to 46 (p = 0.79), and the beacon
+  was found only on a second pass in 6 missions instead of 1. Not shown
+  harmful, so it stays.
+
+The change: a robot whose first pass is over keeps its lane in the split, at
+the x where it was first heard at the far end. It no longer counts toward the
+front of the line or the pacing.
+
+Fresh seeds 360-379, n = 20 per cell, before and after on the same seeds,
+scored once:
+
+| Cell | Located | Assembled | Robots lost | Identical tick for tick |
+|---|---|---|---|---|
+| reflex on, clean radio | 20 to 20 | 20 to 20 | 0 to 0 | 20/20 |
+| reflex off, clean radio | 20 to 20 | 10 to 10 | 28 to 28 | 20/20 |
+| beacon out of reach, reflex on | - | - | 1 to 1 | 3/20 |
+
+With the beacon out of reach:
+
+| Measure | Before | After | Paired, n = 20 |
+|---|---|---|---|
+| Last robot parks after the first, median s | 3.27 | 1.01 | shorter 17, same 3, longer 0; sign test p = 0.00002 |
+| Same, mean s | 6.50 | 4.10 | |
+| Same, max s | 27.0 | 20.5 | |
+| Second pass starts, mean s | 57.05 | 56.04 | earlier 10, same 9, later 1; p = 0.012 |
+| Mission ends, mean s | 74.07 | 71.64 | shorter 13, longer 3, same 4; p = 0.021 |
+| Ground never searched, m2 | 0 | 0 | |
+
+- **The last robot now walks straight up its own lane.** It parks sooner on 17
+  of 20 fresh layouts and later on none.
+- **No ordinary fresh mission changed**, tick for tick. The rule acts only
+  once a robot has been heard at the far end, and no fresh mission with the
+  beacon in reach got that far. So there is no fresh evidence of a gain on
+  ordinary missions.
+- **The ordinary-mission gain rests on three seeds that were tuned on**, the
+  ones known to need a second pass. On the merged code, against the commit
+  before it: seed 30 assembles at 87.6 s (was 93.7), seed 21 at 79.1 s (was
+  82.3), seed 214 at 89.2 s (was 90.7). The other 37 of the 40 missions on
+  seeds 200-219 and 20-39 are unchanged. Since the second pass was first
+  merged, seed 214 has gone from 97.1 s to 89.2 s and seed 30 from 94.1 s to
+  87.6 s.
+- **What got worse**: three of the 20 beacon-out-of-reach missions end 0.7 to
+  1.2 s later. A late robot that detours round ice past a parked neighbour can
+  inherit that neighbour's lane and park 0.14 m from it (seed 364); closest
+  approach to a standing teammate was 0.55 m, no contact.
+- **Long waits remain when the late robot is working round ice**: 17 to 20 s on
+  three fresh layouts. The 6 s bounded wait covers the team for those.
+- **A revision was tried after the score and rejected**: pinning the finished
+  robot's lane was slower on all 4 layouts where it differed, by 3.6 to 10.9 s.
+  The merged code is the version that was scored. Seeds 360-379 are used up.
+- **Not updated**: the radio study's "sweep time in the wrong lane" measure
+  (`fleet_comms.Probe._ideal_lane`) still splits among sweepers only, so it is
+  wrong once any robot has parked at the far end.
+
 
 ## The reflex, looked at harder
 
