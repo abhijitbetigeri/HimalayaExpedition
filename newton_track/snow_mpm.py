@@ -23,8 +23,42 @@ instead of being put in as a spring.
     python snow_mpm.py --voxel 0.025 --seeds 8 --steps 500
 
 READ NEWTON_TRACK.md "Snow" BEFORE QUOTING ANYTHING FROM THIS SCRIPT. As of
-2026-11-26 it fails its own sanity check: on hard snow the robot sinks under
-2 cm and still falls, where the bare-ground control walks.
+2026-11-27 it still fails its own sanity check: on hard snow the robot sinks
+under 2 cm and falls, where the bare-ground control walks. A day of one-seed
+probes at 5 cm voxels did not fix it. What they showed, so nobody repeats them
+blind:
+
+- The fall is not specific to walking. Commanded to stand still, the robot on
+  bare ground is at rest within a second. On hard snow it never settles: it
+  marches in place, the loaded sole ends up rolled and pitched by 10 to 20
+  degrees, and it falls or is about to by 2 s. With no policy at all (joint
+  targets held) it topples within three ticks of when it does on bare ground,
+  so the bed carries a passive robot. The trouble needs the policy in the loop.
+- No single change cures it: walls round the bed, 8 coupled steps per tick,
+  proxy relaxation 0.5, three Aitken passes, standing before walking, soles
+  started on the surface, a taller or a wider foot collider, particles projected
+  out of the feet, 10x and 100x the Young's modulus, the Q1 collider basis,
+  3.5 cm voxels, a foot proxy given its measured articulated inertia. Nor did
+  the sixteen combinations tried. All are arguments of `G1Snow`.
+- The mean vertical force is right (0.98 to 1.00 of the weight while the robot
+  is up; the 76 % in the table is averaged over the fall). The force is not
+  one-sided as a contact should be: in a fifth of foot-ticks the snow pulls a
+  lifting foot DOWN, by up to 70 N with the stock collider, and sideways by
+  about 100 N.
+- `snow_foot_test.py` asks the bed for what rigid ground gives a stance foot.
+  It gives a fifth to a half: a sole-sized plate under the robot's weight has
+  tilted 2 degrees by 20 to 55 % of the rigid tipping torque in roll, whatever
+  the snow's stiffness or strength, the voxel size or the number of passes.
+- `snow_friction_test.py`: the snow is not ice to the foot. The stock foot box
+  does not slide under a pull of 1.5 x its load.
+- The 1.9 cm "sinkage" on hard snow is the spawn pose, not the snow. The nominal
+  pose puts the soles 2.4 cm below the surface. MuJoCo's ground pushes them
+  out; the MPM contact is velocity-level and never does.
+  `--spawn-clearance 0.024` starts them on the surface.
+- The stock particle collider of a G1 foot is a box 2 cm thick. A grid node more
+  than 1 cm inside it is nearer the top face, its contact normal points up, and
+  the snow there holds the foot down. `--foot-collider-height 0.12` removes
+  that. It does not make the robot stand.
 
 The script is self-contained apart from `g1_newton.py`, which must sit next to
 it (on HF Jobs: copy both into the bucket, CLAUDE.md "ships only the single
@@ -32,7 +66,9 @@ named script").
 
 What is measured per rollout, beyond survival:
 - `sink_m`: how far below the original snow surface the lower foot sole sits,
-  median over the rollout after the first half second;
+  median over the rollout after the first half second. With the default spawn
+  the soles START 2.4 cm below the surface, so on firm snow this reads about
+  2 cm for a robot that has not sunk at all;
 - `mean_speed`: body-frame forward speed, to compare with the same seed on bare
   ground (the `bare` rows run that control through the same mujoco_warp solver);
 - `snow_weight_fraction`: mean vertical force the snow delivers to the robot,
@@ -88,6 +124,20 @@ class G1Snow(G1Himalaya):
         bed_half_width: float = 0.5,
         bed_length: float = 3.0,
         max_iterations: int = 50,
+        walls: bool = False,
+        proxy_relaxation: float = 1.0,
+        relaxation_mode: str = "fixed",
+        coupling_iterations: int = 1,
+        snow_friction: float = 0.5,
+        foot_mu: float | None = None,
+        foot_collider_height: float = 0.0,
+        young_modulus: float = 1.4e6,
+        project_outside: bool = False,
+        spawn_clearance: float = 0.0,
+        foot_collider_half_width: float | None = None,
+        collider_basis: str = "S2",
+        mpm_tolerance: float = 1.0e-4,
+        proxy_foot_inertia: tuple[float, float, float] | None = None,
     ):
         self.depth = depth
         self.yield_pressure = yield_pressure
@@ -99,6 +149,20 @@ class G1Snow(G1Himalaya):
         self.voxel = voxel
         self.bed = (bed_half_width, bed_length)
         self.max_iterations = max_iterations
+        self.walls = walls
+        self.proxy_relaxation = proxy_relaxation
+        self.relaxation_mode = relaxation_mode
+        self.coupling_iterations = coupling_iterations
+        self.snow_friction = snow_friction
+        self.foot_mu = foot_mu
+        self.foot_collider_height = foot_collider_height
+        self.young_modulus = young_modulus
+        self.project_outside = project_outside
+        self.spawn_clearance = spawn_clearance
+        self.foot_collider_half_width = foot_collider_half_width
+        self.collider_basis = collider_basis
+        self.mpm_tolerance = mpm_tolerance
+        self.proxy_foot_inertia = proxy_foot_inertia
         self._snow_force_log: list[float] = []
         # The coupled path feeds Newton contacts to mujoco_warp, so the pure-C
         # CPU engine is not available here.
@@ -123,10 +187,27 @@ class G1Snow(G1Himalaya):
         # Spawn ON the snow. The first smoke run left the robot at ground level,
         # i.e. buried to the shins from step 0: it reported the full depth as
         # "sinkage" while standing on the rigid floor.
-        builder.joint_q[2] += self.depth
+        builder.joint_q[2] += self.depth + self.spawn_clearance
+        if self.foot_mu is not None:
+            for body in range(builder.body_count):
+                if builder.body_label[body].endswith(keep):
+                    for shape in builder.body_shapes[body]:
+                        builder.shape_material_mu[shape] = self.foot_mu
+        if self.foot_collider_height > 0.0:
+            self._thicken_foot_colliders(builder, self.foot_collider_height, self.foot_collider_half_width)
         hw, length = self.bed
         lo = np.array([-hw, -0.4, 0.0])
         hi = np.array([hw, length - 0.4, self.depth])
+        if self.walls:
+            t, hz = 0.05, 0.5 * (self.depth + 0.05)
+            cx, cy = 0.0, 0.5 * (lo[1] + hi[1])
+            for x, y, hx, hy in (
+                (lo[0] - t, cy, t, 0.5 * length + 2 * t),
+                (hi[0] + t, cy, t, 0.5 * length + 2 * t),
+                (cx, lo[1] - t, hw, t),
+                (cx, hi[1] + t, hw, t),
+            ):
+                builder.add_shape_box(body=-1, xform=wp.transform(wp.vec3(x, y, hz)), hx=hx, hy=hy, hz=hz)
         ppc = 2  # particles per cell edge
         res = np.maximum(np.ceil(ppc * (hi - lo) / self.voxel).astype(int), 1)
         cell = (hi - lo) / res
@@ -146,9 +227,9 @@ class G1Snow(G1Himalaya):
             radius_mean=radius,
             custom_attributes={
                 # Compressible snow, after newton.examples.mpm_snow_ball.
-                "mpm:young_modulus": 1.4e6,
+                "mpm:young_modulus": float(self.young_modulus),
                 "mpm:poisson_ratio": 0.3,
-                "mpm:friction": 0.5,
+                "mpm:friction": float(self.snow_friction),
                 "mpm:damping": 0.01,
                 "mpm:yield_pressure": float(self.yield_pressure),
                 "mpm:tensile_yield_ratio": 0.2,
@@ -156,6 +237,39 @@ class G1Snow(G1Himalaya):
                 "mpm:hardening": 5.0,
             },
         )
+
+    @staticmethod
+    def _thicken_foot_colliders(builder: newton.ModelBuilder, height: float, half_width: float | None = None):
+        """Replace each foot's particle collider by a box of the same footprint, `height` tall."""
+        for body in range(builder.body_count):
+            if not builder.body_label[body].endswith("ankle_roll_link"):
+                continue
+            for shape in list(builder.body_shapes[body]):
+                if not builder.shape_flags[shape] & newton.ShapeFlags.COLLIDE_PARTICLES:
+                    continue
+                if builder.shape_type[shape] != newton.GeoType.BOX:
+                    raise RuntimeError(f"foot particle collider {builder.shape_label[shape]} is not a box")
+                hx, hy, hz = (float(v) for v in builder.shape_scale[shape])
+                if half_width is not None:
+                    hy = half_width  # DIAGNOSTIC ONLY: a snowshoe, not the G1 foot
+                xf = wp.transform(*builder.shape_transform[shape])
+                builder.shape_flags[shape] &= ~newton.ShapeFlags.COLLIDE_PARTICLES
+                lift = wp.quat_rotate(xf.q, wp.vec3(0.0, 0.0, 0.5 * height - hz))
+                builder.add_shape_box(
+                    body,
+                    xform=wp.transform(xf.p + lift, xf.q),
+                    hx=hx,
+                    hy=hy,
+                    hz=0.5 * height,
+                    cfg=newton.ModelBuilder.ShapeConfig(
+                        density=0.0,  # geometry only: the link's mass and inertia stay as shipped
+                        mu=float(builder.shape_material_mu[shape]),
+                        has_shape_collision=False,
+                        has_particle_collision=True,
+                        is_visible=False,
+                    ),
+                    label=builder.shape_label[shape] + "/snow_collider",
+                )
 
     def _make_solver(self):
         model = self.model
@@ -174,6 +288,8 @@ class G1Snow(G1Himalaya):
                 cfg.max_active_cell_count = 1 << 17
             cfg.strain_basis = "P0"
             cfg.max_iterations = self.max_iterations
+            cfg.tolerance = self.mpm_tolerance
+            cfg.collider_basis = self.collider_basis
             cfg.critical_fraction = 0.0
             bodies = self._rigid_bodies
             self.solver = SolverCoupledProxy(
@@ -184,7 +300,7 @@ class G1Snow(G1Himalaya):
                         solver=lambda v: SolverMuJoCo(model=v, **mj_kwargs),
                         bodies=bodies,
                         joints=list(range(model.joint_count)),
-                        substeps=DECIMATION // self.mpm_per_tick,
+                        substeps=max(1, DECIMATION // self.mpm_per_tick),
                     ),
                     SolverCoupledProxy.Entry(
                         name="mpm",
@@ -201,13 +317,17 @@ class G1Snow(G1Himalaya):
                             bodies=bodies,
                             mode=self.coupling_mode,
                             mass_scale=self.mass_scale,
+                            proxy_relaxation=self.proxy_relaxation,
+                            proxy_relaxation_mode=self.relaxation_mode,
                             collision_pipeline=lambda _m: None,  # MPM does its own collider contact
                         )
                     ],
-                    iterations=1,
+                    iterations=self.coupling_iterations,
                 ),
             )
             self.mpm = self.solver.solver("mpm")
+            if self.proxy_foot_inertia is not None:
+                self._override_proxy_foot_inertia(self.proxy_foot_inertia)
             # collider id -> model body index; -1 for static shapes (the floor)
             # and for the "no collider" id.
             cbi = np.asarray(self.mpm.collider_body_index.numpy() if hasattr(self.mpm.collider_body_index, "numpy")
@@ -216,13 +336,33 @@ class G1Snow(G1Himalaya):
         self.pipeline = newton.CollisionPipeline(model, soft_contact_max=0)
         self.contacts = self.pipeline.contacts()
 
+    def _override_proxy_foot_inertia(self, diag: tuple[float, float, float]):
+        """Give the MPM solver's foot proxies a chosen inertia (body-frame diagonal, kg m^2).
+
+        By default a proxy gets the link's own inertia tensor scaled to MuJoCo's
+        MEAN angular compliance. For the G1 foot that is 3x the articulated
+        inertia in pitch and yaw and a third of it in roll (measured: push the
+        foot of the floating robot, read the acceleration), and lagged feedback
+        is only well behaved when the two match. Uses a private method of
+        `SolverCoupled`; there is no public hook in Newton 1.8.0.
+        """
+        entry = self.solver._entries["mpm"]
+        local = entry.body_global_to_local.numpy()
+        ids = wp.array([int(local[i]) for i in self.feet], dtype=int, device=self.device)
+        mass = self.mpm.model.body_mass.numpy()
+        masses = wp.array([float(mass[int(local[i])]) for i in self.feet], dtype=float, device=self.device)
+        inertias = wp.array([wp.mat33(np.diag(diag).astype(np.float32)) for _ in self.feet], dtype=wp.mat33, device=self.device)
+        self.solver._apply_body_inertia_override(entry, ids, masses, inertias)
+
     # -- stepping ----------------------------------------------------------
 
     def advance(self, wind: np.ndarray):
         if not self.has_snow:
             return super().advance(wind)
-        # One coupled step per policy tick: 4 rigid substeps at 200 Hz inside,
-        # one implicit MPM solve at 50 Hz (as in newton.examples.mpm_anymal).
+        # `mpm_per_tick` coupled steps per 20 ms policy tick, each one implicit
+        # MPM solve and `DECIMATION // mpm_per_tick` rigid substeps (at least
+        # one). One coupled step per tick lets the feet fall straight through
+        # (NEWTON_TRACK.md "Snow", point 3).
         fz = 0.0
         for _ in range(self.mpm_per_tick):
             self._apply_wind(wind)
@@ -231,6 +371,8 @@ class G1Snow(G1Himalaya):
                 self.state_0, self.state_0, self.control, self.contacts, 1.0 / (POLICY_HZ * self.mpm_per_tick)
             )
             fz += self._snow_vertical_force() / self.mpm_per_tick
+            if self.project_outside:
+                self.mpm.project_outside(self.state_0, self.state_0, 0.0)
         self._snow_force_log.append(fz)
 
     def reset(self, seed: int, **kw):
@@ -319,7 +461,16 @@ def main() -> int:
     ap.add_argument("--voxel", type=float, default=0.025)
     ap.add_argument("--bed-length", type=float, default=3.0)
     ap.add_argument("--bed-half-width", type=float, default=0.5)
-    ap.add_argument("--mpm-per-tick", type=int, default=4, choices=(1, 2, 4), help="coupled steps per 20 ms policy tick")
+    ap.add_argument("--mpm-per-tick", type=int, default=4, choices=(1, 2, 4, 8), help="coupled steps per 20 ms policy tick")
+    # Diagnostic knobs. The defaults are the configuration behind results/snow_mpm.json.
+    ap.add_argument("--walls", action="store_true", help="static walls around the bed")
+    ap.add_argument("--mass-scale", type=float, default=1.0, help="proxy mass and inertia scale")
+    ap.add_argument("--relaxation", type=float, default=1.0, help="proxy feedback relaxation factor")
+    ap.add_argument("--coupling-iterations", type=int, default=1, help="proxy passes per coupled step; above 1 uses Aitken")
+    ap.add_argument("--foot-collider-height", type=float, default=0.0, help="m; 0 keeps the stock 2 cm foot box")
+    ap.add_argument("--spawn-clearance", type=float, default=0.0, help="m added to the spawn height above the snow")
+    ap.add_argument("--young", type=float, default=1.4e6, help="snow Young's modulus, Pa")
+    ap.add_argument("--project-outside", action="store_true", help="push particles out of the feet after every coupled step")
     ap.add_argument("--seeds", type=int, default=4)
     ap.add_argument("--steps", type=int, default=500)
     ap.add_argument("--speed", type=float, default=0.5)
@@ -334,6 +485,15 @@ def main() -> int:
         bed_length=args.bed_length,
         bed_half_width=args.bed_half_width,
         mpm_per_tick=args.mpm_per_tick,
+        walls=args.walls,
+        mass_scale=args.mass_scale,
+        proxy_relaxation=args.relaxation,
+        coupling_iterations=args.coupling_iterations,
+        relaxation_mode="aitken" if args.coupling_iterations > 1 else "fixed",
+        foot_collider_height=args.foot_collider_height,
+        spawn_clearance=args.spawn_clearance,
+        young_modulus=args.young,
+        project_outside=args.project_outside,
     )
     if args.smoke:
         args.seeds, args.steps = 1, min(args.steps, 25)

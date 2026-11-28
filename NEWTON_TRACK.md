@@ -67,6 +67,8 @@ npy newton_track/film.py --mu 0.1 --out demo/newton_ice.mp4   # one seed, an ill
 | `ice_sweep.py` | Paired sweep over friction, wind and slope. Same seeds in every cell. Aborts if the control falls. |
 | `snow_mpm.py` | `G1Snow`: the same robot on an MPM snow bed through `SolverCoupledProxy`. Reports sinkage and the share of the robot's weight the snow carries. |
 | `snow_block_test.py` | A block on the same bed. Separates coupling faults from snow rheology. |
+| `snow_foot_test.py` | A sole-sized plate under the robot's weight, tipped by a growing torque. Asks the bed for the moment support rigid ground gives a stance foot. Exits 1 at the defaults: that is the finding. |
+| `snow_friction_test.py` | Drags the foot collider across the bed under load. Checks the snow is not ice to the foot. |
 | `report.py` | Builds the tables in this file from `results/*.json`. |
 | `film.py` | Renders one rollout to mp4 through Newton's GL viewer and system ffmpeg. Needs a display. Clips go to `demo/newton_*.mp4`, which `.gitignore` excludes. |
 
@@ -308,43 +310,111 @@ What is established, in the order it was learned:
 5. **A body with mass but no inertia falls through at any step size.** A trap for
    whoever writes the next test, not a property of snow.
 
-Ruled out since, for the hard-snow failure (2026-11-26, a debugging agent, one
-seed each, hard snow, 5 cm voxels; the flags it added to `snow_mpm.py` for this
-are not committed, and the agent stopped before reporting):
+### The hard-snow failure, diagnosed and not fixed (2026-11-27)
 
-| variant | fell at step |
-|---|---|
-| baseline | 61 |
-| static side walls round the bed | 58 |
-| stiffer foot contact | 63 |
-| eight coupled steps per tick instead of four | 64 |
-| proxy relaxation 0.5 | 66 |
-| Aitken relaxation, three coupling iterations | 57 |
-| stand for one second before walking | 74 |
+A debugging agent spent a day on the sanity check. It did not make the robot
+stand. Everything here is seed 0, one run, 5 cm voxels unless stated, so each
+row is an illustration. The weight behind the conclusion is that more than
+thirty variants fail the same way. Every variant is an argument of `G1Snow`,
+defaulting to the old behaviour.
 
-So an unconfined bed, the coupling step, relaxation and the spawn transient are
-each not the cause, as far as one seed can say. What its logs do show: the
-vertical force the snow puts on the feet has a spread of about 180 N on a mean
-of about 260 N, and the horizontal force on the feet is as large as the
-vertical (ratio 0.9 to 1.3). That reads as the snow gripping and jerking the
-feet, not failing to carry them. Foot-snow friction (suspect 3 in the brief)
-and voxel size were not reached.
+What it found:
+
+- **It is not a walking problem.** Told to stand still, the robot on bare
+  ground is at rest within a second. On hard snow it never settles: it marches
+  in place, the loaded sole ends up rolled and pitched 10 to 20 degrees, and it
+  falls or is about to by 2 s.
+- **It needs the policy in the loop.** With joint targets held and no policy,
+  the robot topples at tick 54 on bare ground and at ticks 53 and 51 on snow.
+  The bed carries a passive robot as well as the ground does.
+- **The bed gives a stance foot a fraction of the moment support rigid ground
+  does.** `snow_foot_test.py`: a sole-sized plate under the robot's weight has
+  tilted 2 degrees at 21 to 55 % of the rigid tipping torque in roll, in every
+  variant, including snow that cannot deform at all and voxels down to 2.5 cm.
+  So it is not snow stiffness, strength or resolution.
+- **The force is not one-sided.** Under the policy the snow pulls a lifting foot
+  down in about a fifth of foot-ticks, by up to 70 N with the stock collider,
+  and sideways by about 100 N.
+- **The mean vertical force is right**: 0.98 to 1.00 of the weight while the
+  robot is up. The 76 % in the table is averaged over the fall.
+
+Which of the weak moment support and the grabbing is the trigger was not
+separated.
+
+Two things wrong in the snow table above:
+
+- **The 1.9 cm "sinkage" on hard snow is the spawn pose.** The nominal pose
+  puts the soles 2.4 cm below the surface. MuJoCo's ground pushes them out. The
+  MPM contact is velocity-level and never does. `--spawn-clearance 0.024`
+  starts them on the surface.
+- **The stock foot collider is a box 2 cm thick.** Grid nodes above its top
+  face push the foot down. `--foot-collider-height 0.12` removes that and does
+  not make the robot stand.
+
+The five suspects from the brief:
+
+| suspect | verdict | evidence |
+|---|---|---|
+| unconfined bed | no | with walls it falls at step 58 (stock 61) |
+| coupling force quality | not the cause alone | every coupling variant below still falls |
+| foot slides on snow | no, the opposite | the stock foot box does not slide under a pull of 1.5 x its load |
+| voxel size | no | at 3.5 cm it falls at tick 82 standing; the plate is no better at 3.5 or 2.5 cm |
+| spawn transient | no | stand 50 ticks, then walk: falls 24 ticks after the walk command |
+
+Walking on hard snow, 120 steps:
+
+| variant | survived | sink cm | snow share of weight |
+|---|---|---|---|
+| bare control | 120 | -0.4 | - |
+| stock | 61 | 1.9 | 0.76 |
+| walls | 58 | 1.0 | 0.73 |
+| 8 coupled steps per tick | 64 | 8.4 | 0.65 |
+| relaxation 0.5 | 66 | 4.0 | 0.81 |
+| Aitken, 3 passes | 57 | 3.8 | 0.72 |
+| 12 cm foot collider | 63 | -0.5 | 0.81 |
+| stand 50 ticks, then walk | 74 of 170 | 1.6 | 0.82 |
+
+Standing at zero command on hard snow, 100 ticks. "clr" is the 2.4 cm spawn
+clearance, "E x" multiplies the Young's modulus, "proj" projects particles out
+of the feet each step. Speed is the mean horizontal body speed after tick 25: a
+robot at rest reads about 0.03.
+
+| variant | survived | speed m/s | max foot tilt deg | snow share |
+|---|---|---|---|---|
+| bare control | 100 | 0.03 | 10 | - |
+| stock | 87 | 0.70 | 122 | 0.79 |
+| E x100 | 99 | 0.64 | 120 | 0.82 |
+| E x100 + relaxation 0.5 | 100 | 0.10 | 32 | 0.96 |
+| 12 cm collider | 100 | 0.62 | 131 | 0.68 |
+| 12 cm + clr | 100 | 0.09 | 48 | 0.98 |
+| 12 cm + clr + proj + Aitken 3 | 100 | 0.27 | 47 | 0.99 |
+| 12 cm + clr, 3.5 cm voxels | 82 | 0.45 | 116 | 0.86 |
+| 12 cm + clr + E x100 + relaxation 0.5 | 82 | 0.51 | 105 | 0.78 |
+
+Thirteen more combinations sit between these. The two best rows (speed about
+0.1 m/s) are still marching and tilting at 2 s. Neither settles, and combining
+them is worse than either.
 
 Open before any snow number is quoted:
 
-- The hard-snow sanity check above. First suspects: the one-step lag in the
-  coupling force, and the 5 cm voxel against a 7 cm wide foot.
-- Sinkage still creeps at 5 ms. Whether it converges with a finer coupled step and
-  finer voxels needs GPU.
-- The bed has no side walls. In the powder clip it slumps outward at the edges
-  within two seconds, so the snow under the robot is unconfined and thinner than
-  the nominal depth. Not yet tested as a cause of the weak support.
+- The hard-snow sanity check, still. A fix probably needs a contact with
+  positional non-penetration that feeds back as force. The proxy coupling in
+  Newton 1.8.0 does not have one, and its ADMM coupled solver does not appear
+  to cover MPM.
+- The default foot proxy has about 3x the true articulated inertia in pitch and
+  yaw and a third of it in roll. Correcting it did not help on its own. Its
+  interaction with relaxation was not explored.
+- Everything above is one seed.
 - Snow parameters are order of magnitude: 300 kg/m^3, three named types in
   `snow_mpm.SNOW`. Nothing is fitted to a snow pit.
 - The policy has never felt sinkage. Even with the physics fixed, a fall in snow
   says the flat-ground policy trips while wading, not that snow is unwalkable.
 
-GPU run, when wanted (this costs money: ask first, as for every job here):
+**Do not spend GPU money on finer voxels expecting this to pass.** The plate
+test shows no improvement from 5 cm to 2.5 cm, and it runs free on CPU. Run it
+first.
+
+GPU run, if the plate test ever passes (this costs money: ask first, as for every job here):
 
 ```bash
 hf cp newton_track/g1_newton.py hf://buckets/iteratehack/jobs-artifacts/himalaya-g1/
@@ -364,7 +434,8 @@ for `g1_newton.py` in `/mnt/himalaya-g1`, following the bucket convention in
   different observation layout (141 inputs, 43 joints including hands).
 - That step counts compare across tracks. `STATE.md` section 5 stands: fall-step
   counts are not comparable across physics backends.
-- Anything about snow beyond the five numbered points above.
+- Anything about snow beyond the five numbered points and the one-seed
+  diagnosis above. The robot does not yet stand on particle snow.
 - That the Steel result is independent of friction modelling choices. Steel ran
   with default settings. Two others (50 solver iterations; 4 velocity iterations)
   were tried on 4 seeds x 300 steps at mu 0.3 and 0.75 and changed speed by under
