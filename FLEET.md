@@ -88,7 +88,7 @@ npy newton_track/report.py                                 # regenerate the tabl
 | `fleet_reflex.py` | The slip reflex and its own evaluation. |
 | `fleet_flush.py` | Flush-ice and sweep-speed study: six cells of full missions, with controls. |
 | `fleet_search.py` | The mission: agents, bus, path planner, scoring, paired evaluation. |
-| `test_fleet_route.py` | Ten geometry cases for the planner, each a shape that broke an earlier version in a real mission. |
+| `test_fleet_route.py` | Geometry cases for the planner and the dig positions, each a shape that broke an earlier version in a real mission. No simulation. |
 | `fleet_comms.py` | `LossyBus` (packet loss, range limit), candidate agent variants, and the radio and team-size studies. |
 | `film_fleet.py` | Wide-shot renderer: snow, footprints, the beacon, mapped hazards, radio links, role markers. Rendering only. |
 
@@ -742,6 +742,115 @@ Missions, seeds 220-239, twenty per cell, the same seeds in each, scored once:
   second pass is quicker.
 - **Not tested at 0.35**: any friction but 0.08, a lossy or short radio, other
   team sizes, the radio off, gradual ice edges, ice met while turning.
+
+## The dig phase, checked for collisions
+
+Three faults had been reported in passing near the beacon: a helper walking
+through the robot on the beacon, robots fighting over dig positions on a bad
+radio, and a parked pair falling when they turn. An agent counted them before
+fixing anything. Rows are in `results/fleet_dig.json`.
+
+Before any change, commit 37d659f, seeds 60-99 and 140-159, reflex on, 60
+missions per radio:
+
+| | Clean | 3 m radio | 80 % loss |
+|---|---|---|---|
+| Located and assembled | 60/60 | 60/60 | 60/60 |
+| Robots lost after the beacon was pinpointed | 1 | 2 | 1 |
+| ... of those, with a teammate within 1 m | 0 | 0 | 0 |
+| Missions with two robots in contact on the dig | 1 | 0 | 0 |
+| Missions with a dig-position conflict over 1 s | 0 | 8 | 13 |
+| Longest conflict | 0.4 s | 8.5 s | 2.5 s |
+| Conflicts that ended with both robots parked | 0 | 0 | 0 |
+| Missions with a slow helper | 4 | 1 | 2 |
+
+- **The dig phase loses nobody to a teammate.** Every robot lost after
+  pinpointing went down on ice during the reflex's back-out, with the nearest
+  teammate 1.5 m away.
+- **Dig-position conflicts on a bad radio are real and harmless.** They are
+  between helpers still walking. None ended with two robots on one position.
+- **A parked pair turning does not fall**: 0 falls in 36 hand-built trials at
+  0.4 to 0.6 m apart. They do touch (25 of 36), and at 0.4 m two of twelve
+  pairs locked together for 12 and 17 s.
+- **Walking through the robot on the beacon** was not seen in 180 missions. In
+  a hand-built layout it is real: the helper pushed into the pinpointing robot
+  for 26 to 31 s and never parked (3 trials).
+- **The worst cases were not the reported ones.** Seed 80, clean radio: a plan
+  threaded a 1 cm gap between two keep-out zones and a robot turned on the
+  spot for 60 s; and a helper kept a waypoint left over from the sweep, walked
+  3.7 m the wrong way, and the dig team stood at 96.0 s. Seed 97, 3 m radio: a
+  robot inside three keep-out zones dithered between two ways out for 9 s.
+
+What was changed:
+
+| Change | Fault |
+|---|---|
+| A parked teammate within 0.9 m of the target shrinks in the planner instead of vanishing | walking through the robot on the beacon |
+| Keep-out zones within 0.1 m of touching have the gap plugged | the 1 cm gap |
+| With no path and several zones around, head away from all of them | boxed-in dither |
+| A dig position within 0.55 m of a parked robot counts as taken | two robots on one position |
+| A helper not yet parked takes a free position more than 1 m nearer | helper keeping a far-side position |
+| A full ring sends the next robot one ring out, not onto the beacon | teams of five or six |
+| A robot leaving a parked state steps apart from a close teammate before turning | parked pair in contact |
+
+`test_fleet_route.py` gained 4 route cases, 9 dig-position cases and 2 walks.
+The old code fails 8 of them.
+
+Seeds 280-299, n = 20 per cell, the same seeds in each arm:
+
+| Radio | Arm | Located | Assembled | Robots lost | Median s, located to assembled |
+|---|---|---|---|---|---|
+| clean | before | 20/20 | 20/20 | 0 | 7.7 |
+| clean | all fixes | 20/20 | 20/20 | 0 | 7.8 |
+| clean | without the waypoint reset | 20/20 | 20/20 | 0 | 8.2 |
+| 3 m | before | 20/20 | 20/20 | 0 | 17.2 |
+| 3 m | all fixes | 20/20 | 20/20 | 0 | 17.2 |
+| 3 m | without the waypoint reset | 20/20 | 20/20 | 0 | 17.2 |
+| 80 % loss | before | 19/20 | 19/20 | 0 | 8.6 |
+| 80 % loss | all fixes | 20/20 | 20/20 | 0 | 8.5 |
+| 80 % loss | without the waypoint reset | 20/20 | 20/20 | 0 | 8.5 |
+
+- **Totals do not move, except one mission gained** at 80 % loss (seed 283):
+  before, a sweeper stuck at a 7 cm gap for 60 s and the beacon was never
+  found. One mission, sign test p = 1.0.
+- **One fix was left out.** Dropping a stale waypoint when a robot is called
+  to the beacon is right in principle and repairs seed 80. On fresh seeds it
+  made one clean-radio mission 12.2 s slower (and one 20.2 s slower in the
+  earlier scoring) because the new route met unmapped ice, and it gained 2.6 s
+  once. "All fixes" has it. The third arm, without it, was rerun on these
+  seeds after they had been looked at, so it is a check, not a fresh score.
+  **The stale waypoint is a known open fault.**
+- **One fix was wrong for a robot that is still moving, and was corrected at
+  merge.** Shrinking a nearby teammate's keep-out zone instead of dropping it
+  also applied to the pinpointing robot while it walks onto the beacon. A plan
+  round where it stands now flips sides as it walks: on seed 214 a helper set
+  off to pass in front of it, was re-planned behind it, turned on the spot and
+  was walked into by the helper behind (38 contact episodes, dig team 4.2 s
+  later). On seed 219 the changed route cost a robot on ice. A pinpointing
+  robot is now left out of the plan until it parks, as before. Both seeds are
+  back to what they were, with no contact.
+- **The code as merged, on fresh seeds 300-319**, clean radio, reflex on,
+  n = 20, against the commit before it: 20/20 assembled and 2 robots lost in
+  both, and all 20 missions have the same outcome and times. No contact
+  between robots in either. On seeds 200-219 and 20-39, 40/40 assembled and 2
+  lost in both; two missions differ, by 0.1 s. The far-side layout still parks
+  in 5.0 to 5.1 s with no contact (12 trials). The degraded-radio cells were not
+  rerun on the merged code.
+- **What the merged fixes cost**: the gap plug made one 3 m mission 12.7 s
+  slower (seed 295: it closed a 9 cm gap the old code had walked through). The
+  boxed-in rule made seed 296 about 2 s slower on two radios. The step-apart
+  rule costs 1.4 to 2.6 s when it fires.
+- **In the hand-built layouts**: far-side position, parked in 5.0 s with no
+  contact, against 26 to 31 s of contact and never parked (3 trials). Parked
+  pair at 0.4 m, contact in 0 of 12 against 12 of 12.
+- **Seeds 260-279 are burned.** They were scored first on an earlier version;
+  two rules were narrowed afterwards, so the table above is the reserve set.
+- **Not fixed**: two helpers sent to the same point on the way round a hazard
+  (brief contact, 80 % loss, seeds 265 and 272). Robots parked as little as
+  0.4 m apart at the far end by the sweep. The pinpointing robot has the same
+  stale-waypoint exposure.
+- **Not verified**: teams of five or six (unit test only), and whether the
+  "position taken" rule has fired in any mission.
 
 ## What went wrong on the way, and what it taught
 

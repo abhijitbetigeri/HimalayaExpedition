@@ -294,6 +294,11 @@ def plan_path(start, goal, discs, ring: int = 12, ring_gap: float = 0.15):
     return path[::-1]
 
 
+TEAMMATE_BODY = 0.3  # a keep-out disc smaller than this round a teammate keeps nobody off it
+GAP_MIN = 0.1  # two hazard zones closer than this to touching leave no way between them: a robot gets within about 5 cm of a waypoint
+PLUG = 0.3  # radius of the disc that closes such a gap
+
+
 def keep_out_discs(target, hazards, teammates=(), clearance: float = 0.45) -> list:
     """The discs route() plans around, for one target. See route() for the rules."""
     tx, ty = target
@@ -302,7 +307,42 @@ def keep_out_discs(target, hazards, teammates=(), clearance: float = 0.45) -> li
         d = math.hypot(hx - tx, hy - ty)
         full = hr + clearance
         discs.append((hx, hy, min(full, max(0.3, d - 0.2)) if d < full else full))
-    discs += [(ox, oy, r + 0.3) for ox, oy, r in teammates if math.hypot(ox - tx, oy - ty) > r + clearance]
+    # Two hazard zones that do not overlap but are less than GAP_MIN from
+    # touching get the gap between them plugged. The shortest path would
+    # otherwise thread it: on seed 80 two hazards 3.51 m apart left 1 cm
+    # between their zones, the plan went through it, and the leg was clear only
+    # from the exact waypoint before it. A robot stands within a few
+    # centimetres of a waypoint at best, so from where it stood the leg was
+    # blocked, the waypoint was underfoot, and it turned on the spot there for
+    # the last 60 s of the mission. Zones are taken at full size here (one
+    # that has shrunk for the target has not opened a gap), and the plug is
+    # left out if the target is in it. With no such pair of hazards the list
+    # is what it was. GAP_MIN was 0.3 at first; gaps of 0.23 m turned out to
+    # be walked without trouble (seeds 262 and 272), and closing them only
+    # sent robots the long way round.
+    for i, (ax, ay, ar) in enumerate(hazards):
+        for bx, by, br in hazards[i + 1 :]:
+            apart = math.hypot(bx - ax, by - ay)
+            gap = apart - ar - br - 2 * clearance
+            if 0.0 <= gap < GAP_MIN:
+                u = (ar + clearance + gap / 2) / apart  # the middle of the gap, as a fraction of the way from a to b
+                px, py = ax + u * (bx - ax), ay + u * (by - ay)
+                if math.hypot(px - tx, py - ty) >= PLUG + 0.2:
+                    discs.append((px, py, PLUG))
+    for ox, oy, r in teammates:
+        # A parked teammate beside the target used to be left out altogether
+        # (anything within r + clearance of it), so that neighbouring dig
+        # positions stay reachable. That also let the leg to the target run
+        # straight THROUGH the teammate when the target was on its far side:
+        # on a 3 m radio, seed 93, a helper walked through the robot standing
+        # on the beacon. Its disc now shrinks, as a hazard's does, to what
+        # leaves the target `ring_gap` outside it. Beyond r + clearance nothing
+        # changes. A target closer to the teammate than its own body is not a
+        # routing question (`_dig_slot` does not hand one out).
+        d = math.hypot(ox - tx, oy - ty)
+        keep = min(r + 0.3, d - 0.15)
+        if keep >= TEAMMATE_BODY:
+            discs.append((ox, oy, keep))
     return discs
 
 
@@ -312,8 +352,9 @@ def route(pos, target, hazards, clearance: float = 0.45, memory: dict | None = N
     Hazards are inflated by `clearance` and are never ignored. If the target
     lies inside a hazard's keep-out zone (a beacon next to mapped ice) the zone
     shrinks just enough to leave the target reachable from the far side. A
-    parked teammate beside the target IS ignored: dig slots are next to each
-    other by design.
+    parked teammate beside the target shrinks the same way and is not ignored:
+    dig slots are next to each other by design, but the way to one is round
+    the robot standing next to it, not through it.
 
     `memory` (per agent) holds the committed waypoint. It is kept until it is
     reached or the leg to it stops being clear, so the plan does not flip sides
@@ -353,6 +394,17 @@ def route(pos, target, hazards, clearance: float = 0.45, memory: dict | None = N
         k = int(np.argmin(np.linalg.norm(c - s, axis=1)))
         away = s - c[k]
         away = away / max(float(np.linalg.norm(away)), 1e-6)
+        # Inside more than one keep-out zone "the nearest" changes from tick
+        # to tick and so did the way out: on a 3 m radio, seed 97, a robot
+        # that had backed off ice three times stood inside three zones and
+        # turned to and fro between two of these headings for the rest of the
+        # mission. There the way out is away from all of them at once.
+        dist_c = np.linalg.norm(c - s, axis=1)
+        inside = dist_c < np.array([d[2] for d in discs])
+        if inside.sum() > 1:
+            out = ((s - c[inside]) / np.maximum(dist_c[inside], 1e-6)[:, None]).sum(axis=0)
+            if float(np.linalg.norm(out)) > 0.2:  # two zones pushing in opposite directions leave nothing to follow
+                away = out / float(np.linalg.norm(out))
         wp = (float(s[0] + away[0]), float(s[1] + away[1]))
     else:
         wp = path[0]
@@ -397,6 +449,8 @@ class _SearchGrid:
 
 
 N_SLOTS = 12  # dig positions around the burial point; neighbours of a taken slot stay empty
+RECLAIM = 1.0  # a helper on its way gives up its slot for a free one this much nearer
+SLOT_TAKEN = 0.55  # a dig position this close to where a parked robot stands is taken, whatever number that robot holds: two G1s 0.47 m apart touch hands
 STRAGGLER_GAP = 3.0  # a sweeper this far behind the front is not holding a lane
 
 
@@ -576,27 +630,115 @@ class RobotAgent:
         first version shared slots out by bearing every tick: assignments
         flipped as robots moved, and on seed 17 the first to park stood in
         the way of the two behind it for 80 seconds.
+
+        A slot is also taken if a parked robot stands on it (`clear`), and
+        with no slot left the answer is a place to wait outside the ring,
+        never the centre. A claim is given up for a free slot that is more
+        than RECLAIM nearer, which happens to a helper that had to come round
+        to another side of the ring.
         """
         blocked = set()
+        parked = []
         for r, i in self._heard(t).items():
             k = i.get("slot")
             if k is not None and (i["role"] == "hold" or r < self.id):
                 blocked.update({(k - 1) % N_SLOTS, k, (k + 1) % N_SLOTS})
-        free = [
-            k for k in range(N_SLOTS)
-            if k not in blocked
-            and not any(math.hypot(self._slot_xy(k, centre)[0] - hx, self._slot_xy(k, centre)[1] - hy) < hr for hx, hy, hr in self.hazards)
-        ]  # fmt: skip
+            if i["role"] == "hold":
+                parked.append((i["x"], i["y"]))
+
+        def clear(p, k=None) -> bool:
+            """Not on mapped ice, and not where a parked robot is standing.
+
+            The second half is new. A slot number says where a teammate means
+            to stand, counted from ITS idea of the centre; its heartbeat says
+            where it does stand. Two helpers that took their bearings from
+            different estimates can hold different numbers for the same
+            ground, and a robot parked at the far end that has not heard of
+            the beacon holds no number at all. SLOT_TAKEN is below the 0.6 m
+            that the robot on the beacon may be from a slot when it stops its
+            permitted half metre short, so that robot never trips this. The
+            position I already stand on is exempt: parked robots do not
+            shuffle.
+            """
+            if any(math.hypot(p[0] - hx, p[1] - hy) < hr for hx, hy, hr in self.hazards):
+                return False
+            if k is not None and k == self.slot and self.holding:
+                return True
+            return all(math.hypot(p[0] - ox, p[1] - oy) >= SLOT_TAKEN for ox, oy in parked)
+
+        def reach(k) -> float:
+            x, y = self._slot_xy(k, centre)
+            return math.hypot(x - me[0], y - me[1])
+
+        free = [k for k in range(N_SLOTS) if k not in blocked and clear(self._slot_xy(k, centre), k)]
         if self.slot not in free:
             if not free:
+                # The ring is full. This used to send the robot to the centre,
+                # which is where the pinpointing robot stands. It waits one
+                # ring further out instead, on the nearest spoke that is clear,
+                # and looks again every tick: a claim lapses when its holder
+                # goes down.
                 self.slot = None
-                return centre
-            self.slot = min(free, key=lambda k: math.hypot(self._slot_xy(k, centre)[0] - me[0], self._slot_xy(k, centre)[1] - me[1]))
+                spokes = [(centre[0] + 2 * (x - centre[0]), centre[1] + 2 * (y - centre[1])) for x, y in (self._slot_xy(k, centre) for k in range(N_SLOTS))]
+                spokes = [p for p in spokes if clear(p)]
+                if not spokes:
+                    return (me[0], me[1])
+                return min(spokes, key=lambda p: math.hypot(p[0] - me[0], p[1] - me[1]))
+            self.slot = min(free, key=reach)
+        elif not self.holding:
+            # Kept, but not at any price. A helper that walks round ice arrives
+            # on another side of the ring than the one it claimed from, and its
+            # slot is then across the dig team: on seed 89, clean radio, one
+            # came over the top with a free slot 1.1 m ahead of it and walked
+            # on round the robot on the beacon to its own, 14 s more. A free
+            # slot more than RECLAIM nearer is taken instead. A metre is two
+            # slots, so walking up to the ring cannot set it off, and a parked
+            # robot never does this.
+            nearest = min(free, key=reach)
+            if reach(nearest) < reach(self.slot) - RECLAIM:
+                self.slot = nearest
         return self._slot_xy(self.slot, centre)
 
     def _teammate_discs(self, t: int) -> list:
         """Teammates that are parked: walk round them, do not queue behind them."""
         return [(i["x"], i["y"], 0.45) for i in self._heard(t).values() if i["role"] in ("hold", "locate", "down")]
+
+    def _dig_discs(self, t: int, slot) -> list:
+        """The teammates a helper walks round on its way to `slot`.
+
+        `_teammate_discs`, less a teammate that is still walking onto the
+        beacon (role "locate") within 0.9 m of the slot. `keep_out_discs`
+        shrinks a teammate that close to the target instead of dropping it,
+        which is right for one that stands still. The pinpointing robot does
+        not: a plan round where it is now flips sides as it walks. On seed 214
+        a helper set off to pass in front of it, was re-planned behind it two
+        seconds later, turned round on the spot and was walked into by the
+        helper following it. Until it parks it is left out, as it was before.
+        """
+        return [
+            (i["x"], i["y"], 0.45)
+            for i in self._heard(t).values()
+            if i["role"] in ("hold", "down") or (i["role"] == "locate" and math.hypot(i["x"] - slot[0], i["y"] - slot[1]) >= 0.9)
+        ]
+
+    def _too_close_to_turn(self, t: int, me, goal, was_parked: bool):
+        """A parked robot that must turn round with a teammate at its shoulder walks straight apart first. A command, or None.
+
+        The sweep parks robots at the far end as little as 0.4 m apart (0.38 m
+        on a 3 m radio, seed 76), and a beacon heard after that is behind
+        them, so both turn on the spot where they stand. The second pass met
+        the same thing and has a rule for it (`_step_apart`); this is that
+        rule on the way to a dig position. It starts only on the tick a robot
+        leaves a parked state, and only where `steer` would turn on the spot
+        (more than 1 rad off the bearing to the goal); once started it runs
+        until the two are PART[1] apart. A helper already walking is left
+        alone: with any close teammate as the trigger, one that stopped to
+        turn at a waypoint while another helper walked up behind it went
+        straight on for 9 s with the other at its heels (3 m radio, seed 265).
+        """
+        if not self.parting and not (was_parked and abs(wrap(math.atan2(goal[1] - me[1], goal[0] - me[0]) - me[2])) > 1.0):
+            return None
+        return self._step_apart(t, me)
 
     # ---- one tick ----
 
@@ -713,8 +855,13 @@ class RobotAgent:
                 self.role = "hold"
                 self.target = slot
                 return self._keep_station(me, slot), out
+            was_parked = self.role == "hold"  # still last tick's role here
             self.role = "converge"
-            return self._yield_to_others(t, me, self._go(me, slot, V_SWEEP, 0.3, self._teammate_discs(t))), out
+            apart = self._too_close_to_turn(t, me, slot, was_parked)
+            if apart is not None:
+                self.target = None
+                return apart, out
+            return self._yield_to_others(t, me, self._go(me, slot, V_SWEEP, 0.3, self._dig_discs(t, slot))), out
 
         # -- second pass: the team reached the far end without a signal --
         if self.pass2:
